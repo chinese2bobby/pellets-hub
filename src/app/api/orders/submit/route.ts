@@ -290,6 +290,7 @@ export async function POST(request: NextRequest) {
     let phone: string | undefined;
     let companyName: string | undefined;
     let paymentMethod: PaymentMethod;
+    let salutation: 'herr' | 'frau' | 'firma' | 'divers' | undefined;
     
     if (isPreorder) {
       const preorderData = formData as PreorderFormData;
@@ -304,6 +305,7 @@ export async function POST(request: NextRequest) {
       phone = preorderData.phone;
       companyName = preorderData.company;
       paymentMethod = preorderData.payment || 'vorkasse';
+      salutation = preorderData.salutation as typeof salutation;
     } else {
       const orderData = formData as OrderFormData;
       const parsed = parseOrder(orderData);
@@ -317,6 +319,7 @@ export async function POST(request: NextRequest) {
       phone = orderData.telefon;
       companyName = orderData.firma;
       paymentMethod = orderData.zahlungsart;
+      salutation = orderData.anrede as typeof salutation;
     }
     
     // Generate order ID
@@ -347,6 +350,7 @@ export async function POST(request: NextRequest) {
       phone,
       customer_name: customerName,
       company_name: companyName,
+      salutation,
       country,
       order_type: orderType,
       status: 'received' as OrderStatus,
