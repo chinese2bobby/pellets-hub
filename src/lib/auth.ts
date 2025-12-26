@@ -14,7 +14,7 @@ export interface AuthUser {
 export const TEST_ACCOUNTS = {
   admin: {
     id: 'admin-mastermind-001',
-    email: 'mastermind@pelletor.at',
+    email: 'admin@pelletor.de',
     password: 'Mastermind2025!',
     name: 'Mastermind Admin',
     role: 'admin' as const,

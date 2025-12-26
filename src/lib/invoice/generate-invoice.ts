@@ -348,7 +348,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     <!-- Header -->
     <div class="header">
       <div>
-        <img src="${COMPANY.logo_url || 'https://pelletor.at/assets/logo.png'}" alt="${COMPANY.name}" class="logo" />
+        <img src="${COMPANY.logo_url || 'https://pelletor.de/assets/logo.png'}" alt="${COMPANY.name}" class="logo" />
       </div>
       <div class="company-info">
         <strong>${COMPANY.name}</strong><br>

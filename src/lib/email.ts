@@ -6,7 +6,7 @@ import { COMPANY, COUNTRY_CONFIG } from '@/config';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'bestellung@pelletor.at';
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'bestellung@pelletor.de';
 const FROM_NAME = process.env.RESEND_FROM_NAME || 'Pelletor';
 
 export interface SendEmailResult {

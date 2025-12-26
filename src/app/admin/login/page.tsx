@@ -79,7 +79,7 @@ export default function AdminLoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@pelletor.at"
+                    placeholder="admin@pelletor.de"
                     className="pl-10"
                     required
                   />
@@ -129,7 +129,7 @@ export default function AdminLoginPage() {
         <div className="mt-6 p-4 rounded-lg bg-black/20 backdrop-blur border border-white/10">
           <p className="text-white/80 text-sm font-medium mb-2">🧠 Test Credentials:</p>
           <code className="block text-xs text-white/60 font-mono">
-            Email: mastermind@pelletor.at<br />
+            Email: admin@pelletor.de<br />
             Pass: Mastermind2025!
           </code>
         </div>

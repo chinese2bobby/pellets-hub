@@ -24,40 +24,60 @@ export const COUNTRY_CONFIG: Record<Country, CountryConfig> = {
 };
 
 // ============================================
-// COMPANY INFO (Placeholder - change for production)
+// COMPANY INFO - Or Projekt GmbH (Pelletor Brand)
+// German company serving Germany and Austria
 // ============================================
 
 export const COMPANY = {
-  name: 'Pelletor GmbH',
-  legal_name: 'Pelletor Vertriebs GmbH',
+  // Brand name (customer-facing)
+  name: 'Pelletor',
+  // Legal entity
+  legal_name: 'Or Projekt GmbH',
+
   address: {
-    street: 'Brennstoffweg 12',
-    zip: '4020',
-    city: 'Linz',
-    country: 'AT' as Country,
+    street: 'Fördepromenade 2',
+    zip: '24944',
+    city: 'Flensburg',
+    country: 'DE' as Country,
   },
-  phone: '+43 732 123 456',
-  email: 'info@pelletor.at',
-  support_email: 'support@pelletor.at',
-  order_email: 'bestellung@pelletor.at',
-  
-  // Banking
-  iban: 'AT61 1234 5678 9012 3456',
-  bic: 'GIBAATWWXXX',
-  bank_name: 'Erste Bank',
-  payment_recipient: 'Pelletor Vertriebs GmbH',
-  
-  // Tax
-  vat_id_at: 'ATU12345678',
-  vat_id_de: 'DE123456789',
-  
-  // Registration
-  company_register: 'FN 123456a',
-  register_court: 'Landesgericht Linz',
-  
+
+  // Managing Director
+  ceo: 'Olaf Rubin',
+  ceo_title: 'Geschäftsführer',
+
+  // Contact
+  phone: '+49 461 9041 2830',
+  email: 'info@pelletor.de',
+  support_email: 'service@pelletor.de',
+  order_email: 'bestellung@pelletor.de',
+
+  // Banking (for Vorkasse payments)
+  iban: 'DE89 2175 0000 0017 2838 00',
+  bic: 'NOLADE21NOS',
+  bank_name: 'Nord-Ostsee Sparkasse',
+  payment_recipient: 'Or Projekt GmbH',
+
+  // Tax - German VAT ID
+  vat_id: 'DE04186678',
+
+  // Registration - Handelsregister
+  company_register: 'HRB 9457',
+  register_court: 'Amtsgericht Flensburg',
+  register_city: '24937 Flensburg',
+
+  // Company info
+  founded: '2012',
+  legal_form: 'Gesellschaft mit beschränkter Haftung',
+
   // Web
-  domain: 'pelletor.at',
-  url: 'https://pelletor.at',
+  domain: 'pelletor.de',
+  url: 'https://pelletor.de',
+
+  // Logo
+  logo_url: 'https://pelletor.de/assets/logo.png',
+
+  // Service areas
+  service_countries: ['DE', 'AT'] as Country[],
 };
 
 // ============================================
