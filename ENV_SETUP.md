@@ -1,0 +1,24 @@
+# Environment Setup
+
+Create `.env.local` file in the root with these values:
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://srtsuzvjjcrliuaftvce.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNydHN1enZqamNybGl1YWZ0dmNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTc4MjUsImV4cCI6MjA4MjE3MzgyNX0.KbgzxE0xkLRZVgpWvDyxtWsY80Y8H3csYzHlNqFIMKk
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNydHN1enZqamNybGl1YWZ0dmNlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjU5NzgyNSwiZXhwIjoyMDgyMTczODI1fQ.4Rho6Wx0GuELPXrQveech0anku5D4Ku8I-OME0XtfUs
+
+# Resend
+RESEND_API_KEY=re_FExbTTsy_6uscdbwDaiNzgkAFi76SXNMr
+RESEND_FROM_EMAIL=bestellung@pelletor.at
+RESEND_FROM_NAME=Pelletor
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_COMPANY_NAME=Pelletor GmbH
+NEXT_PUBLIC_COMPANY_DOMAIN=pelletor.at
+
+# Admin (comma-separated emails for initial admin access)
+ADMIN_EMAILS=admin@pelletor.at
+```
+

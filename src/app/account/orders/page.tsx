@@ -1,0 +1,110 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Package, RefreshCw } from 'lucide-react';
+import { Header } from '@/components/layout/header';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { OrderCard } from '@/components/orders/order-card';
+import { Order } from '@/types';
+import { AuthUser } from '@/lib/auth';
+
+export default function CustomerOrdersPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkAuthAndFetch();
+  }, []);
+
+  async function checkAuthAndFetch() {
+    try {
+      const authRes = await fetch('/api/auth/session');
+      const authResult = await authRes.json();
+      
+      if (!authResult.success) {
+        router.push('/account/login');
+        return;
+      }
+      
+      setUser(authResult.data.user);
+      
+      // Fetch customer orders
+      const ordersRes = await fetch('/api/orders/my');
+      const ordersResult = await ordersRes.json();
+      
+      if (ordersResult.success) {
+        setOrders(ordersResult.data.orders);
+      }
+    } catch (error) {
+      router.push('/account/login');
+    }
+    setLoading(false);
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  return (
+    <div className="min-h-screen bg-[#FAFAF8]">
+      <Header variant="customer" userName={user.name} />
+
+      <main className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">My Orders</h1>
+            <p className="text-gray-600 mt-1">
+              {orders.length} {orders.length === 1 ? 'order' : 'orders'}
+            </p>
+          </div>
+          <Link href="http://localhost:8080/bestellung.html" target="_blank">
+            <Button className="bg-[#2D5016] hover:bg-[#1a3009]">
+              <Package className="w-4 h-4 mr-2" />
+              New Order
+            </Button>
+          </Link>
+        </div>
+
+        {/* Orders List */}
+        <div className="space-y-4">
+          {orders.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
+                <p className="text-gray-500 mb-6">
+                  You haven't placed any orders yet. Start shopping to see your orders here.
+                </p>
+                <Link href="http://localhost:8080/bestellung.html" target="_blank">
+                  <Button className="bg-[#2D5016] hover:bg-[#1a3009]">
+                    Place Your First Order
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            orders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                variant="customer"
+              />
+            ))
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
