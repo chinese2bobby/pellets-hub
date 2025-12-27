@@ -47,9 +47,9 @@ export const COMPANY = {
 
   // Contact
   phone: '+49 461 9041 2830',
-  email: 'info@pelletor.de',
-  support_email: 'service@pelletor.de',
-  order_email: 'bestellung@pelletor.de',
+  email: 'info@pelletor.at',
+  support_email: 'service@pelletor.at',
+  order_email: 'bestellung@pelletor.at',
 
   // Banking (for Vorkasse payments)
   iban: 'DE89 2175 0000 0017 2838 00',
@@ -70,11 +70,11 @@ export const COMPANY = {
   legal_form: 'Gesellschaft mit beschränkter Haftung',
 
   // Web
-  domain: 'pelletor.de',
-  url: 'https://pelletor.de',
+  domain: 'pelletor.at',
+  url: 'https://pelletor.at',
 
   // Logo
-  logo_url: 'https://pelletor.de/assets/logo.png',
+  logo_url: 'https://pelletor.at/assets/logo.png',
 
   // Service areas
   service_countries: ['DE', 'AT'] as Country[],

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, Lock, Mail, Shield } from 'lucide-react';
+import { Eye, EyeOff, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,7 +61,7 @@ export default function AdminLoginPage() {
 
         <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur">
           <CardHeader className="pb-4">
-            <CardTitle className="text-center text-gray-900">Sign In</CardTitle>
+            <CardTitle className="text-center text-gray-900">Admin-Anmeldung</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -72,30 +72,27 @@ export default function AdminLoginPage() {
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@pelletor.de"
-                    className="pl-10"
-                    required
-                  />
-                </div>
+                <label className="text-sm font-medium text-gray-700">E-Mail-Adresse</label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@pelletor.de"
+                  autoComplete="email"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Password</label>
+                <label className="text-sm font-medium text-gray-700">Passwort</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="pl-10 pr-10"
+                    placeholder="Passwort eingeben"
+                    autoComplete="current-password"
+                    className="pr-10"
                     required
                   />
                   <button
@@ -113,26 +110,28 @@ export default function AdminLoginPage() {
                 className="w-full bg-[#2D5016] hover:bg-[#1a3009]"
                 disabled={loading}
               >
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? 'Wird angemeldet...' : 'Anmelden'}
               </Button>
             </form>
 
             <div className="mt-6 pt-6 border-t border-gray-100">
               <p className="text-xs text-gray-500 text-center">
-                Protected area. Unauthorized access prohibited.
+                Geschützter Bereich. Unbefugter Zugriff verboten.
               </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Test credentials hint */}
-        <div className="mt-6 p-4 rounded-lg bg-black/20 backdrop-blur border border-white/10">
-          <p className="text-white/80 text-sm font-medium mb-2">🧠 Test Credentials:</p>
-          <code className="block text-xs text-white/60 font-mono">
-            Email: admin@pelletor.de<br />
-            Pass: Mastermind2025!
-          </code>
-        </div>
+        {/* Test credentials hint - only in dev */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 p-4 rounded-lg bg-black/20 backdrop-blur border border-white/10">
+            <p className="text-white/80 text-sm font-medium mb-2">Test-Zugangsdaten:</p>
+            <code className="block text-xs text-white/60 font-mono">
+              E-Mail: admin@pelletor.de<br />
+              Passwort: Mastermind2025!
+            </code>
+          </div>
+        )}
       </div>
     </div>
   );

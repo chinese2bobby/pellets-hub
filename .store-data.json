@@ -1,0 +1,652 @@
+{
+  "orders": [
+    {
+      "id": "test-order-001",
+      "order_seq": 300001,
+      "order_no": "300-001",
+      "email": "kevin@mastermind.io",
+      "phone": "+43 660 1234567",
+      "customer_name": "Kevin Hall",
+      "country": "AT",
+      "order_type": "normal",
+      "status": "confirmed",
+      "payment_method": "vorkasse",
+      "payment_status": "pending",
+      "items": [
+        {
+          "id": "item-001",
+          "order_id": "test-order-001",
+          "sku": "PREM-SACK",
+          "name": "Premium-Linie Palettenware",
+          "quantity": 3,
+          "unit": "palette",
+          "unit_price_net": 25900,
+          "line_total_net": 77700
+        }
+      ],
+      "totals": {
+        "subtotal_net": 77700,
+        "shipping_net": 0,
+        "surcharges_net": 0,
+        "vat_rate": 0.2,
+        "vat_label": "USt.",
+        "vat_amount": 15540,
+        "total_gross": 93240
+      },
+      "delivery_address": {
+        "id": "addr-001",
+        "user_id": "customer-mastermind-001",
+        "country": "AT",
+        "street": "Masterstraße",
+        "house_no": "42",
+        "zip": "1010",
+        "city": "Wien",
+        "is_default": true,
+        "created_at": "2025-12-20T18:40:29.201Z",
+        "updated_at": "2025-12-20T18:40:29.201Z"
+      },
+      "delivery_notes": "Lieferung hinten rum, Tor Code: 1234",
+      "email_flags": {
+        "weekend_hello_sent": false,
+        "confirmation_sent": true
+      },
+      "needs_weekend_hello": false,
+      "created_at": "2025-12-20T18:40:29.201Z",
+      "updated_at": "2025-12-26T18:40:29.201Z"
+    },
+    {
+      "id": "test-order-002",
+      "order_seq": 300002,
+      "order_no": "300-002",
+      "email": "buchhaltung@firma.at",
+      "phone": "+43 1 12345678",
+      "customer_name": "Hans Geschäftsführer",
+      "company_name": "Musterfirma GmbH",
+      "vat_id": "ATU12345678",
+      "country": "AT",
+      "order_type": "preorder",
+      "status": "planning_delivery",
+      "payment_method": "vorkasse",
+      "payment_status": "paid",
+      "items": [
+        {
+          "id": "item-002",
+          "order_id": "test-order-002",
+          "sku": "ECO-PAL",
+          "name": "Eco-Linie Palettenware",
+          "quantity": 5,
+          "unit": "palette",
+          "unit_price_net": 24400,
+          "line_total_net": 122000
+        }
+      ],
+      "totals": {
+        "subtotal_net": 122000,
+        "shipping_net": 0,
+        "surcharges_net": 0,
+        "vat_rate": 0,
+        "vat_label": "Reverse Charge",
+        "vat_amount": 0,
+        "total_gross": 122000,
+        "is_reverse_charge": true
+      },
+      "delivery_address": {
+        "id": "addr-002",
+        "user_id": "",
+        "country": "AT",
+        "street": "Industriestraße",
+        "house_no": "100",
+        "zip": "1230",
+        "city": "Wien",
+        "is_default": true,
+        "created_at": "2025-12-26T18:40:29.201Z",
+        "updated_at": "2025-12-26T18:40:29.201Z"
+      },
+      "delivery_date": "2026-09-01",
+      "email_flags": {
+        "weekend_hello_sent": false,
+        "confirmation_sent": true,
+        "payment_instructions_sent": true
+      },
+      "needs_weekend_hello": false,
+      "created_at": "2025-12-26T18:40:29.201Z",
+      "updated_at": "2025-12-27T18:40:29.201Z"
+    },
+    {
+      "id": "test-order-003",
+      "order_seq": 300003,
+      "order_no": "300-003",
+      "email": "test@example.de",
+      "phone": "+49 170 9876543",
+      "customer_name": "Max Mustermann",
+      "country": "DE",
+      "order_type": "normal",
+      "status": "received",
+      "payment_method": "paypal",
+      "payment_status": "pending",
+      "items": [
+        {
+          "id": "item-003",
+          "order_id": "test-order-003",
+          "sku": "PREM-LOSE",
+          "name": "Premium-Linie Lose",
+          "quantity": 5000,
+          "unit": "silo",
+          "unit_price_net": 26,
+          "line_total_net": 130000
+        }
+      ],
+      "totals": {
+        "subtotal_net": 130000,
+        "shipping_net": 0,
+        "surcharges_net": 0,
+        "vat_rate": 0.07,
+        "vat_label": "MwSt.",
+        "vat_amount": 9100,
+        "total_gross": 139100
+      },
+      "delivery_address": {
+        "id": "addr-003",
+        "user_id": "",
+        "country": "DE",
+        "street": "Hauptstraße",
+        "house_no": "1",
+        "zip": "10115",
+        "city": "Berlin",
+        "is_default": false,
+        "created_at": "2025-12-27T18:40:29.201Z",
+        "updated_at": "2025-12-27T18:40:29.201Z"
+      },
+      "email_flags": {},
+      "needs_weekend_hello": true,
+      "created_at": "2025-12-27T18:40:29.201Z",
+      "updated_at": "2025-12-27T18:40:29.201Z"
+    },
+    {
+      "id": "8d3beb53-6d62-4b2d-81ad-6dea958d0bd8",
+      "order_seq": 300005,
+      "order_no": "300-005",
+      "email": "test-de-b2c@example.de",
+      "phone": "+49 170 1234567",
+      "customer_name": "Max Mustermann",
+      "salutation": "herr",
+      "country": "DE",
+      "order_type": "normal",
+      "status": "received",
+      "payment_method": "vorkasse",
+      "payment_status": "pending",
+      "items": [
+        {
+          "id": "f9b9f458-2274-4ecb-9732-78b204fe8cda",
+          "order_id": "8d3beb53-6d62-4b2d-81ad-6dea958d0bd8",
+          "sku": "eco-975",
+          "name": "Eco-Linie Palettenware",
+          "quantity": 2,
+          "unit": "palette",
+          "unit_price_net": 24365,
+          "line_total_net": 24365
+        }
+      ],
+      "totals": {
+        "subtotal_net": 24365,
+        "shipping_net": 0,
+        "surcharges_net": 0,
+        "vat_rate": 0.07,
+        "vat_label": "MwSt.",
+        "vat_amount": 1706,
+        "total_gross": 26071,
+        "is_reverse_charge": false
+      },
+      "delivery_address": {
+        "country": "DE",
+        "street": "Hauptstr. 42",
+        "house_no": "",
+        "zip": "10115",
+        "city": "Berlin",
+        "access_notes": "",
+        "is_default": false
+      },
+      "delivery_notes": "",
+      "email_flags": {
+        "weekend_hello_sent": false,
+        "confirmation_sent": false
+      },
+      "needs_weekend_hello": true,
+      "created_at": "2025-12-27T18:49:08.254Z",
+      "updated_at": "2025-12-27T18:49:55.208Z",
+      "invoice_url": "/api/orders/invoice?orderId=8d3beb53-6d62-4b2d-81ad-6dea958d0bd8&format=html",
+      "invoice_generated_at": "2025-12-27T18:49:55.205Z"
+    },
+    {
+      "id": "b0d8666e-ad98-47c3-90fe-cd608f489fae",
+      "order_seq": 300006,
+      "order_no": "300-006",
+      "email": "test-at-b2c@example.at",
+      "phone": "+43 660 9876543",
+      "customer_name": "Anna Schmidt",
+      "salutation": "frau",
+      "country": "AT",
+      "order_type": "normal",
+      "status": "received",
+      "payment_method": "vorkasse",
+      "payment_status": "pending",
+      "items": [
+        {
+          "id": "fc8b79a7-b950-42fb-805f-1594032d145a",
+          "order_id": "b0d8666e-ad98-47c3-90fe-cd608f489fae",
+          "sku": "premium-975",
+          "name": "Premium-Linie Palettenware",
+          "quantity": 2,
+          "unit": "palette",
+          "unit_price_net": 27290,
+          "line_total_net": 27290
+        }
+      ],
+      "totals": {
+        "subtotal_net": 27290,
+        "shipping_net": 0,
+        "surcharges_net": 0,
+        "vat_rate": 0.2,
+        "vat_label": "USt.",
+        "vat_amount": 5458,
+        "total_gross": 32748,
+        "is_reverse_charge": false
+      },
+      "delivery_address": {
+        "country": "AT",
+        "street": "Ringstr. 10",
+        "house_no": "",
+        "zip": "1010",
+        "city": "Wien",
+        "access_notes": "",
+        "is_default": false
+      },
+      "delivery_notes": "",
+      "email_flags": {
+        "weekend_hello_sent": false,
+        "confirmation_sent": false
+      },
+      "needs_weekend_hello": true,
+      "created_at": "2025-12-27T18:49:16.535Z",
+      "updated_at": "2025-12-27T18:50:02.248Z",
+      "invoice_url": "/api/orders/invoice?orderId=b0d8666e-ad98-47c3-90fe-cd608f489fae&format=html",
+      "invoice_generated_at": "2025-12-27T18:50:02.248Z"
+    },
+    {
+      "id": "69abfaf3-a8c5-4ab1-8480-360cba2f6313",
+      "order_seq": 300007,
+      "order_no": "300-007",
+      "email": "buchhaltung@mueller-gmbh.de",
+      "phone": "+49 89 12345678",
+      "customer_name": "Thomas Müller",
+      "company_name": "Müller GmbH",
+      "vat_id": "DE123456789",
+      "salutation": "firma",
+      "country": "DE",
+      "order_type": "normal",
+      "status": "received",
+      "payment_method": "vorkasse",
+      "payment_status": "pending",
+      "items": [
+        {
+          "id": "0f11343f-7d83-4c7d-9b23-7759de5e65b3",
+          "order_id": "69abfaf3-a8c5-4ab1-8480-360cba2f6313",
+          "sku": "eco-1950",
+          "name": "Eco-Linie Palettenware",
+          "quantity": 1,
+          "unit": "palette",
+          "unit_price_net": 24365,
+          "line_total_net": 48731
+        }
+      ],
+      "totals": {
+        "subtotal_net": 48731,
+        "shipping_net": 0,
+        "surcharges_net": 0,
+        "vat_rate": 0.07,
+        "vat_label": "MwSt.",
+        "vat_amount": 3411,
+        "total_gross": 52142,
+        "is_reverse_charge": false
+      },
+      "delivery_address": {
+        "country": "DE",
+        "street": "Industriestr. 55",
+        "house_no": "",
+        "zip": "80331",
+        "city": "München",
+        "access_notes": "",
+        "is_default": false
+      },
+      "delivery_notes": "",
+      "email_flags": {
+        "weekend_hello_sent": false,
+        "confirmation_sent": false
+      },
+      "needs_weekend_hello": true,
+      "created_at": "2025-12-27T18:49:28.141Z",
+      "updated_at": "2025-12-27T18:50:08.438Z",
+      "invoice_url": "/api/orders/invoice?orderId=69abfaf3-a8c5-4ab1-8480-360cba2f6313&format=html",
+      "invoice_generated_at": "2025-12-27T18:50:08.438Z"
+    },
+    {
+      "id": "3dc1c72c-032a-4e06-b5cc-edd27d398faf",
+      "order_seq": 300008,
+      "order_no": "300-008",
+      "email": "einkauf@holzbau.at",
+      "phone": "+43 1 98765432",
+      "customer_name": "Hans Huber",
+      "company_name": "Holzbau Österreich GmbH",
+      "vat_id": "ATU12345678",
+      "salutation": "firma",
+      "country": "AT",
+      "order_type": "normal",
+      "status": "received",
+      "payment_method": "vorkasse",
+      "payment_status": "pending",
+      "items": [
+        {
+          "id": "5eff3776-ab17-4b27-9a29-bfe78d94fc2d",
+          "order_id": "3dc1c72c-032a-4e06-b5cc-edd27d398faf",
+          "sku": "premium-1950",
+          "name": "Premium-Linie Palettenware",
+          "quantity": 1,
+          "unit": "palette",
+          "unit_price_net": 27290,
+          "line_total_net": 54580
+        }
+      ],
+      "totals": {
+        "subtotal_net": 54580,
+        "shipping_net": 0,
+        "surcharges_net": 0,
+        "vat_rate": 0,
+        "vat_label": "Reverse Charge",
+        "vat_amount": 0,
+        "total_gross": 54580,
+        "is_reverse_charge": true
+      },
+      "delivery_address": {
+        "country": "AT",
+        "street": "Industriepark 100",
+        "house_no": "",
+        "zip": "1230",
+        "city": "Wien",
+        "access_notes": "",
+        "is_default": false
+      },
+      "delivery_notes": "",
+      "email_flags": {
+        "weekend_hello_sent": false,
+        "confirmation_sent": false
+      },
+      "needs_weekend_hello": true,
+      "created_at": "2025-12-27T18:49:45.167Z",
+      "updated_at": "2025-12-27T18:50:15.515Z",
+      "invoice_url": "/api/orders/invoice?orderId=3dc1c72c-032a-4e06-b5cc-edd27d398faf&format=html",
+      "invoice_generated_at": "2025-12-27T18:50:15.515Z"
+    }
+  ],
+  "events": [
+    {
+      "id": "event-001",
+      "order_id": "test-order-001",
+      "actor_type": "system",
+      "event_type": "created",
+      "payload": {
+        "source": "bestellung.html"
+      },
+      "created_at": "2025-12-20T18:40:29.201Z"
+    },
+    {
+      "id": "event-002",
+      "order_id": "test-order-001",
+      "actor_type": "admin",
+      "event_type": "status_changed",
+      "payload": {
+        "from": "received",
+        "to": "confirmed"
+      },
+      "created_at": "2025-12-26T18:40:29.201Z"
+    },
+    {
+      "id": "2ec78a59-715d-4973-be43-427ad093315a",
+      "order_id": "8d3beb53-6d62-4b2d-81ad-6dea958d0bd8",
+      "actor_type": "system",
+      "event_type": "created",
+      "payload": {
+        "source": "bestellung.html",
+        "order_type": "normal",
+        "country": "DE",
+        "total_gross": 26071
+      },
+      "created_at": "2025-12-27T18:49:08.254Z"
+    },
+    {
+      "id": "95c1ea2d-e8da-4a76-aa11-aae1da24877b",
+      "order_id": "b0d8666e-ad98-47c3-90fe-cd608f489fae",
+      "actor_type": "system",
+      "event_type": "created",
+      "payload": {
+        "source": "bestellung.html",
+        "order_type": "normal",
+        "country": "AT",
+        "total_gross": 32748
+      },
+      "created_at": "2025-12-27T18:49:16.535Z"
+    },
+    {
+      "id": "3603eee9-c485-4823-b90b-d6c0240edac8",
+      "order_id": "69abfaf3-a8c5-4ab1-8480-360cba2f6313",
+      "actor_type": "system",
+      "event_type": "created",
+      "payload": {
+        "source": "bestellung.html",
+        "order_type": "normal",
+        "country": "DE",
+        "total_gross": 52142
+      },
+      "created_at": "2025-12-27T18:49:28.141Z"
+    },
+    {
+      "id": "e57b0866-3303-4053-b8d8-30556eb64971",
+      "order_id": "3dc1c72c-032a-4e06-b5cc-edd27d398faf",
+      "actor_type": "system",
+      "event_type": "created",
+      "payload": {
+        "source": "bestellung.html",
+        "order_type": "normal",
+        "country": "AT",
+        "total_gross": 54580
+      },
+      "created_at": "2025-12-27T18:49:45.167Z"
+    },
+    {
+      "id": "acbddd5f-7dd6-49ed-aee2-7b7ae50990b9",
+      "order_id": "8d3beb53-6d62-4b2d-81ad-6dea958d0bd8",
+      "actor_type": "admin",
+      "event_type": "invoice_generated",
+      "payload": {
+        "invoice_no": "RE-DE-2025-300005",
+        "format": "html"
+      },
+      "created_at": "2025-12-27T18:49:55.205Z"
+    },
+    {
+      "id": "e78787e5-cea8-4420-b734-95bc378ebac8",
+      "order_id": "b0d8666e-ad98-47c3-90fe-cd608f489fae",
+      "actor_type": "admin",
+      "event_type": "invoice_generated",
+      "payload": {
+        "invoice_no": "RE-AT-2025-300006",
+        "format": "html"
+      },
+      "created_at": "2025-12-27T18:50:02.248Z"
+    },
+    {
+      "id": "2a70558f-a261-4499-8e2f-46bca1224a56",
+      "order_id": "69abfaf3-a8c5-4ab1-8480-360cba2f6313",
+      "actor_type": "admin",
+      "event_type": "invoice_generated",
+      "payload": {
+        "invoice_no": "RE-DE-2025-300007",
+        "format": "html"
+      },
+      "created_at": "2025-12-27T18:50:08.438Z"
+    },
+    {
+      "id": "5b80456d-1c45-46e8-9f8a-9ad9cabbfb59",
+      "order_id": "3dc1c72c-032a-4e06-b5cc-edd27d398faf",
+      "actor_type": "admin",
+      "event_type": "invoice_generated",
+      "payload": {
+        "invoice_no": "RE-AT-2025-300008",
+        "format": "html"
+      },
+      "created_at": "2025-12-27T18:50:15.515Z"
+    }
+  ],
+  "outbox": [
+    {
+      "id": "fcdc350b-141b-47a6-ac76-630c8f110cc5",
+      "order_id": "8d3beb53-6d62-4b2d-81ad-6dea958d0bd8",
+      "email_type": "confirmation",
+      "to_email": "test-de-b2c@example.de",
+      "payload": {
+        "order_no": "300-005",
+        "customer_name": "Max Mustermann",
+        "items": [
+          {
+            "id": "f9b9f458-2274-4ecb-9732-78b204fe8cda",
+            "order_id": "8d3beb53-6d62-4b2d-81ad-6dea958d0bd8",
+            "sku": "eco-975",
+            "name": "Eco-Linie Palettenware",
+            "quantity": 2,
+            "unit": "palette",
+            "unit_price_net": 24365,
+            "line_total_net": 24365
+          }
+        ],
+        "totals": {
+          "subtotal_net": 24365,
+          "shipping_net": 0,
+          "surcharges_net": 0,
+          "vat_rate": 0.07,
+          "vat_label": "MwSt.",
+          "vat_amount": 1706,
+          "total_gross": 26071,
+          "is_reverse_charge": false
+        },
+        "country": "DE"
+      },
+      "status": "pending",
+      "created_at": "2025-12-27T18:49:08.254Z"
+    },
+    {
+      "id": "7e2629b6-c6a9-4ff4-877e-6075507e0507",
+      "order_id": "b0d8666e-ad98-47c3-90fe-cd608f489fae",
+      "email_type": "confirmation",
+      "to_email": "test-at-b2c@example.at",
+      "payload": {
+        "order_no": "300-006",
+        "customer_name": "Anna Schmidt",
+        "items": [
+          {
+            "id": "fc8b79a7-b950-42fb-805f-1594032d145a",
+            "order_id": "b0d8666e-ad98-47c3-90fe-cd608f489fae",
+            "sku": "premium-975",
+            "name": "Premium-Linie Palettenware",
+            "quantity": 2,
+            "unit": "palette",
+            "unit_price_net": 27290,
+            "line_total_net": 27290
+          }
+        ],
+        "totals": {
+          "subtotal_net": 27290,
+          "shipping_net": 0,
+          "surcharges_net": 0,
+          "vat_rate": 0.2,
+          "vat_label": "USt.",
+          "vat_amount": 5458,
+          "total_gross": 32748,
+          "is_reverse_charge": false
+        },
+        "country": "AT"
+      },
+      "status": "pending",
+      "created_at": "2025-12-27T18:49:16.536Z"
+    },
+    {
+      "id": "5cd5c90c-0387-4a31-b137-9605fc6e913b",
+      "order_id": "69abfaf3-a8c5-4ab1-8480-360cba2f6313",
+      "email_type": "confirmation",
+      "to_email": "buchhaltung@mueller-gmbh.de",
+      "payload": {
+        "order_no": "300-007",
+        "customer_name": "Thomas Müller",
+        "items": [
+          {
+            "id": "0f11343f-7d83-4c7d-9b23-7759de5e65b3",
+            "order_id": "69abfaf3-a8c5-4ab1-8480-360cba2f6313",
+            "sku": "eco-1950",
+            "name": "Eco-Linie Palettenware",
+            "quantity": 1,
+            "unit": "palette",
+            "unit_price_net": 24365,
+            "line_total_net": 48731
+          }
+        ],
+        "totals": {
+          "subtotal_net": 48731,
+          "shipping_net": 0,
+          "surcharges_net": 0,
+          "vat_rate": 0.07,
+          "vat_label": "MwSt.",
+          "vat_amount": 3411,
+          "total_gross": 52142,
+          "is_reverse_charge": false
+        },
+        "country": "DE"
+      },
+      "status": "pending",
+      "created_at": "2025-12-27T18:49:28.141Z"
+    },
+    {
+      "id": "48eccbb7-8b23-4cc2-a3ea-b19acb9d4151",
+      "order_id": "3dc1c72c-032a-4e06-b5cc-edd27d398faf",
+      "email_type": "confirmation",
+      "to_email": "einkauf@holzbau.at",
+      "payload": {
+        "order_no": "300-008",
+        "customer_name": "Hans Huber",
+        "items": [
+          {
+            "id": "5eff3776-ab17-4b27-9a29-bfe78d94fc2d",
+            "order_id": "3dc1c72c-032a-4e06-b5cc-edd27d398faf",
+            "sku": "premium-1950",
+            "name": "Premium-Linie Palettenware",
+            "quantity": 1,
+            "unit": "palette",
+            "unit_price_net": 27290,
+            "line_total_net": 54580
+          }
+        ],
+        "totals": {
+          "subtotal_net": 54580,
+          "shipping_net": 0,
+          "surcharges_net": 0,
+          "vat_rate": 0,
+          "vat_label": "Reverse Charge",
+          "vat_amount": 0,
+          "total_gross": 54580,
+          "is_reverse_charge": true
+        },
+        "country": "AT"
+      },
+      "status": "pending",
+      "created_at": "2025-12-27T18:49:45.167Z"
+    }
+  ],
+  "orderSeq": 300009
+}

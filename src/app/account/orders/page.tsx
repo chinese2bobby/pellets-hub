@@ -64,15 +64,15 @@ export default function CustomerOrdersPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">My Orders</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">Meine Bestellungen</h1>
             <p className="text-gray-600 mt-1">
-              {orders.length} {orders.length === 1 ? 'order' : 'orders'}
+              {orders.length} {orders.length === 1 ? 'Bestellung' : 'Bestellungen'}
             </p>
           </div>
-          <Link href="http://localhost:8080/bestellung.html" target="_blank">
+          <Link href="https://pelletor.de/bestellung.html" target="_blank">
             <Button className="bg-[#2D5016] hover:bg-[#1a3009]">
               <Package className="w-4 h-4 mr-2" />
-              New Order
+              Neue Bestellung
             </Button>
           </Link>
         </div>
@@ -83,13 +83,13 @@ export default function CustomerOrdersPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No orders yet</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Noch keine Bestellungen</h3>
                 <p className="text-gray-500 mb-6">
-                  You haven't placed any orders yet. Start shopping to see your orders here.
+                  Sie haben noch keine Bestellungen aufgegeben. Bestellen Sie jetzt Ihre Holzpellets.
                 </p>
-                <Link href="http://localhost:8080/bestellung.html" target="_blank">
+                <Link href="https://pelletor.de/bestellung.html" target="_blank">
                   <Button className="bg-[#2D5016] hover:bg-[#1a3009]">
-                    Place Your First Order
+                    Erste Bestellung aufgeben
                   </Button>
                 </Link>
               </CardContent>

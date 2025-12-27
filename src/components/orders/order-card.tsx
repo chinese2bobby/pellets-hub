@@ -199,20 +199,20 @@ export function OrderCard({
             <div className="flex flex-col gap-2">
               <Link href={detailUrl}>
                 <Button variant="outline" size="sm" className="w-full">
-                  View Details
+                  Details anzeigen
                 </Button>
               </Link>
               
-              {order.invoice_url ? (
+              <a
+                href={`/api/orders/invoice?orderNo=${order.order_no}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Button variant="outline" size="sm" className="w-full">
                   <FileText className="w-4 h-4 mr-2" />
-                  Invoice
+                  Rechnung
                 </Button>
-              ) : (
-                <p className="text-xs text-gray-400 text-center py-1">
-                  Invoice pending
-                </p>
-              )}
+              </a>
 
               {/* Customer view: Show Klarna button if cancelled */}
               {!isAdmin && isCancelled && (

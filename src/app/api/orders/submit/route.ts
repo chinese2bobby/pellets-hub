@@ -63,6 +63,7 @@ interface PreorderFormData {
   deliveryNotes?: string;
   salutation?: string;
   company?: string;
+  vatId?: string; // USt-IdNr / UID-Nummer for B2B
   firstName: string;
   lastName: string;
   email: string;
@@ -83,6 +84,7 @@ interface OrderFormData {
   ort: string;
   strasse: string;
   firma?: string;
+  ustIdNr?: string; // USt-IdNr / UID-Nummer for B2B
   anrede: string;
   vorname: string;
   nachname: string;
@@ -116,29 +118,72 @@ function isWeekendOrder(): boolean {
   return day === 0 || day === 6; // Sunday = 0, Saturday = 6
 }
 
-// Calculate totals
+// Validate Austrian VAT ID format (ATU + 8 digits)
+function isValidAtVatId(vatId: string | undefined): boolean {
+  if (!vatId) return false;
+  return /^ATU[0-9]{8}$/i.test(vatId.replace(/\s/g, ''));
+}
+
+// Validate German VAT ID format (DE + 9 digits)
+function isValidDeVatId(vatId: string | undefined): boolean {
+  if (!vatId) return false;
+  return /^DE[0-9]{9}$/i.test(vatId.replace(/\s/g, ''));
+}
+
+// Calculate totals with B2B / Reverse Charge logic
+// AT + B2B with valid UID = Reverse Charge (0% USt)
+// AT + B2C = 20% USt
+// DE (any) = 7% MwSt
 function calculateTotals(
   items: OrderItem[],
-  country: Country
+  country: Country,
+  companyName?: string,
+  vatId?: string
 ): TotalsSnapshot {
   const config = COUNTRY_CONFIG[country];
-  
+
   const subtotalNet = items.reduce((sum, item) => sum + item.line_total_net, 0);
   const shippingNet = 0; // Free shipping
   const surchargesNet = 0;
-  
   const totalNet = subtotalNet + shippingNet + surchargesNet;
-  const vatAmount = Math.round(totalNet * config.vat_rate);
+
+  // Check for B2B Reverse Charge (Austria only)
+  const isB2B = Boolean(companyName && companyName.trim().length > 0);
+  const hasValidAtVatId = country === 'AT' && isValidAtVatId(vatId);
+  const isReverseCharge = country === 'AT' && isB2B && hasValidAtVatId;
+
+  let vatRate: number;
+  let vatLabel: string;
+  let vatAmount: number;
+
+  if (isReverseCharge) {
+    // Austrian B2B with valid UID-Nummer = Reverse Charge
+    vatRate = 0;
+    vatLabel = 'Reverse Charge';
+    vatAmount = 0;
+  } else if (country === 'AT') {
+    // Austrian B2C = 20% USt
+    vatRate = 0.20;
+    vatLabel = 'USt.';
+    vatAmount = Math.round(totalNet * vatRate);
+  } else {
+    // Germany (B2B or B2C) = 7% MwSt for pellets
+    vatRate = 0.07;
+    vatLabel = 'MwSt.';
+    vatAmount = Math.round(totalNet * vatRate);
+  }
+
   const totalGross = totalNet + vatAmount;
 
   return {
     subtotal_net: subtotalNet,
     shipping_net: shippingNet,
     surcharges_net: surchargesNet,
-    vat_rate: config.vat_rate,
-    vat_label: config.vat_label,
+    vat_rate: vatRate,
+    vat_label: vatLabel,
     vat_amount: vatAmount,
     total_gross: totalGross,
+    is_reverse_charge: isReverseCharge,
   };
 }
 
@@ -289,9 +334,10 @@ export async function POST(request: NextRequest) {
     let email: string;
     let phone: string | undefined;
     let companyName: string | undefined;
+    let vatId: string | undefined;
     let paymentMethod: PaymentMethod;
     let salutation: 'herr' | 'frau' | 'firma' | 'divers' | undefined;
-    
+
     if (isPreorder) {
       const preorderData = formData as PreorderFormData;
       const parsed = parsePreorder(preorderData);
@@ -304,6 +350,7 @@ export async function POST(request: NextRequest) {
       email = preorderData.email;
       phone = preorderData.phone;
       companyName = preorderData.company;
+      vatId = preorderData.vatId;
       paymentMethod = preorderData.payment || 'vorkasse';
       salutation = preorderData.salutation as typeof salutation;
     } else {
@@ -318,18 +365,19 @@ export async function POST(request: NextRequest) {
       email = orderData.email;
       phone = orderData.telefon;
       companyName = orderData.firma;
+      vatId = orderData.ustIdNr;
       paymentMethod = orderData.zahlungsart;
       salutation = orderData.anrede as typeof salutation;
     }
-    
+
     // Generate order ID
     const orderId = crypto.randomUUID();
-    
+
     // Update items with order_id
     items = items.map(item => ({ ...item, order_id: orderId }));
-    
-    // Calculate totals
-    const totals = calculateTotals(items, country);
+
+    // Calculate totals with B2B / Reverse Charge logic
+    const totals = calculateTotals(items, country, companyName, vatId);
     
     // Initial email flags
     const emailFlags: EmailFlags = {
@@ -350,6 +398,7 @@ export async function POST(request: NextRequest) {
       phone,
       customer_name: customerName,
       company_name: companyName,
+      vat_id: vatId,
       salutation,
       country,
       order_type: orderType,

@@ -1,86 +1,146 @@
 'use client';
 
-import { ReactNode } from 'react';
+import * as React from 'react';
 import { X } from 'lucide-react';
-import { Button } from './button';
+import { cn } from '@/lib/utils';
 
-interface DialogProps {
+// Dialog Context
+interface DialogContextValue {
   open: boolean;
-  onClose: () => void;
-  title: string;
-  description?: string;
-  children?: ReactNode;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  onConfirm?: () => void;
-  variant?: 'default' | 'destructive';
-  loading?: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function Dialog({
-  open,
-  onClose,
-  title,
-  description,
-  children,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
-  onConfirm,
-  variant = 'default',
-  loading = false,
-}: DialogProps) {
+const DialogContext = React.createContext<DialogContextValue | undefined>(undefined);
+
+function useDialogContext() {
+  const context = React.useContext(DialogContext);
+  if (!context) {
+    throw new Error('Dialog components must be used within a Dialog');
+  }
+  return context;
+}
+
+// Main Dialog component
+interface DialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children: React.ReactNode;
+}
+
+export function Dialog({ open = false, onOpenChange, children }: DialogProps) {
+  const handleOpenChange = React.useCallback((newOpen: boolean) => {
+    onOpenChange?.(newOpen);
+  }, [onOpenChange]);
+
+  return (
+    <DialogContext.Provider value={{ open, onOpenChange: handleOpenChange }}>
+      {children}
+    </DialogContext.Provider>
+  );
+}
+
+// DialogContent - the modal overlay and content
+interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+}
+
+export function DialogContent({ children, className, ...props }: DialogContentProps) {
+  const { open, onOpenChange } = useDialogContext();
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={() => onOpenChange(false)}
       />
-      
+
       {/* Dialog */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-md hover:bg-gray-100 transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="p-4">
-          {description && (
-            <p className="text-sm text-gray-600 mb-4">{description}</p>
-          )}
-          {children}
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 p-4 border-t border-gray-100 bg-gray-50 rounded-b-lg">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={loading}
-          >
-            {cancelLabel}
-          </Button>
-          {onConfirm && (
-            <Button
-              variant={variant === 'destructive' ? 'destructive' : 'default'}
-              onClick={onConfirm}
-              disabled={loading}
-            >
-              {loading ? 'Processing...' : confirmLabel}
-            </Button>
-          )}
-        </div>
+      <div
+        className={cn(
+          "relative bg-white rounded-lg shadow-xl w-full mx-4 animate-in fade-in zoom-in-95 duration-200",
+          className
+        )}
+        {...props}
+      >
+        {/* Close button */}
+        <button
+          onClick={() => onOpenChange(false)}
+          className="absolute right-4 top-4 p-1 rounded-md hover:bg-gray-100 transition-colors z-10"
+        >
+          <X className="w-5 h-5 text-gray-500" />
+        </button>
+        {children}
       </div>
     </div>
   );
 }
 
+// DialogHeader
+interface DialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+}
+
+export function DialogHeader({ children, className, ...props }: DialogHeaderProps) {
+  return (
+    <div
+      className={cn("flex flex-col space-y-1.5", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+// DialogTitle
+interface DialogTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+  children: React.ReactNode;
+}
+
+export function DialogTitle({ children, className, ...props }: DialogTitleProps) {
+  return (
+    <h2
+      className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+      {...props}
+    >
+      {children}
+    </h2>
+  );
+}
+
+// DialogDescription
+interface DialogDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {
+  children: React.ReactNode;
+}
+
+export function DialogDescription({ children, className, ...props }: DialogDescriptionProps) {
+  return (
+    <p
+      className={cn("text-sm text-gray-500", className)}
+      {...props}
+    >
+      {children}
+    </p>
+  );
+}
+
+// DialogFooter
+interface DialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+}
+
+export function DialogFooter({ children, className, ...props }: DialogFooterProps) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 pt-4 mt-4 border-t border-gray-100",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}

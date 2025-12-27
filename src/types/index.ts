@@ -25,8 +25,9 @@ export type OrderStatus =
   | 'cancelled';
 
 // Payment methods
-export type PaymentMethod = 
+export type PaymentMethod =
   | 'vorkasse'      // Bank transfer prepayment
+  | 'rechnung'      // Invoice (50% deposit required)
   | 'lastschrift'   // Direct debit
   | 'paypal'
   | 'klarna';
@@ -126,10 +127,11 @@ export interface TotalsSnapshot {
   subtotal_net: number;    // cents
   shipping_net: number;    // cents
   surcharges_net: number;  // cents
-  vat_rate: number;        // e.g., 0.07 or 0.20
+  vat_rate: number;        // e.g., 0.07 or 0.20 or 0 for reverse charge
   vat_label: string;       // "MwSt." or "USt."
   vat_amount: number;      // cents
   total_gross: number;     // cents
+  is_reverse_charge?: boolean;  // true for AT B2B with valid VAT ID
 }
 
 export interface EmailFlags {

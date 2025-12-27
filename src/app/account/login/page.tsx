@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,12 +51,12 @@ export default function CustomerLoginPage() {
             <span className="text-2xl font-bold text-white">P</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Pelletor</h1>
-          <p className="text-gray-600 mt-1">Customer Account</p>
+          <p className="text-gray-600 mt-1">Kundenkonto</p>
         </div>
 
         <Card className="border border-gray-200 shadow-lg">
           <CardHeader className="pb-4">
-            <CardTitle className="text-center text-gray-900">Sign In</CardTitle>
+            <CardTitle className="text-center text-gray-900">Anmelden</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -67,30 +67,27 @@ export default function CustomerLoginPage() {
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="pl-10"
-                    required
-                  />
-                </div>
+                <label className="text-sm font-medium text-gray-700">E-Mail-Adresse</label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ihre@email.com"
+                  autoComplete="email"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Password</label>
+                <label className="text-sm font-medium text-gray-700">Passwort</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="pl-10 pr-10"
+                    placeholder="Passwort eingeben"
+                    autoComplete="current-password"
+                    className="pr-10"
                     required
                   />
                   <button
@@ -108,35 +105,37 @@ export default function CustomerLoginPage() {
                 className="w-full bg-[#2D5016] hover:bg-[#1a3009]"
                 disabled={loading}
               >
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? 'Wird angemeldet...' : 'Anmelden'}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <Link href="/account/forgot-password" className="text-sm text-[#2D5016] hover:underline">
-                Forgot password?
+                Passwort vergessen?
               </Link>
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-100 text-center">
               <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
+                Noch kein Konto?{' '}
                 <Link href="/account/register" className="text-[#2D5016] font-medium hover:underline">
-                  Register
+                  Registrieren
                 </Link>
               </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Test credentials hint */}
-        <div className="mt-6 p-4 rounded-lg bg-[#2D5016]/10 border border-[#2D5016]/20">
-          <p className="text-[#2D5016] text-sm font-medium mb-2">🧠 Test Account:</p>
-          <code className="block text-xs text-gray-600 font-mono">
-            Email: kevin@mastermind.io<br />
-            Pass: Kevin2025!
-          </code>
-        </div>
+        {/* Test credentials hint - only in dev */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 p-4 rounded-lg bg-[#2D5016]/10 border border-[#2D5016]/20">
+            <p className="text-[#2D5016] text-sm font-medium mb-2">Test-Zugangsdaten:</p>
+            <code className="block text-xs text-gray-600 font-mono">
+              E-Mail: kevin@mastermind.io<br />
+              Passwort: Kevin2025!
+            </code>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -107,7 +107,7 @@ function generateEmailHTML(
 <body>
   <div class="container">
     <div class="header">
-      <h1 style="margin: 0;">✅ Bestellung bestätigt</h1>
+      <h1 style="margin: 0;">Bestellbestaetigung</h1>
       <p style="margin: 10px 0 0 0; opacity: 0.9;">${order.order_no}</p>
     </div>
     <div class="content">
@@ -158,14 +158,14 @@ function generateEmailHTML(
 <body>
   <div class="container">
     <div class="header">
-      <h1 style="margin: 0;">💳 Zahlungsinformationen</h1>
+      <h1 style="margin: 0;">Zahlungsinformationen</h1>
       <p style="margin: 10px 0 0 0; opacity: 0.9;">${order.order_no}</p>
     </div>
     <div class="content">
       <p>${salutation},</p>
 
       <div class="order-box" style="background: #fff3cd; border-color: #ffc107;">
-        <p style="margin: 0;"><strong>⏰ Bitte überweisen Sie den Betrag innerhalb von 7 Tagen</strong></p>
+        <p style="margin: 0;"><strong>Bitte ueberweisen Sie den Betrag innerhalb von 7 Tagen</strong></p>
         <p style="margin: 10px 0 0 0; font-size: 1.3em; color: #2D5016;"><strong>${formatCurrency(order.totals.total_gross, order.country)}</strong></p>
       </div>
 
@@ -180,7 +180,7 @@ function generateEmailHTML(
         </table>
       </div>
 
-      <p>⚠️ <strong>Wichtig:</strong> Bitte geben Sie die Bestellnummer als Verwendungszweck an!</p>
+      <p><strong>Wichtig:</strong> Bitte geben Sie die Bestellnummer als Verwendungszweck an!</p>
       <p>Mit freundlichen Grüßen,<br>Ihr ${COMPANY.name} Team</p>
     </div>
     ${footerHtml}
@@ -201,7 +201,7 @@ function generateEmailHTML(
 <body>
   <div class="container">
     <div class="header">
-      <h1 style="margin: 0;">📄 Rechnung</h1>
+      <h1 style="margin: 0;">Rechnung</h1>
       <p style="margin: 10px 0 0 0; opacity: 0.9;">${invoiceNo}</p>
     </div>
     <div class="content">
@@ -263,7 +263,7 @@ function generateEmailHTML(
 
     case 'shipped':
       return {
-        subject: `Ihre Bestellung ${order.order_no} wurde versandt 🚚`,
+        subject: `Versandbestaetigung - Bestellung ${order.order_no}`,
         html: `
 <!DOCTYPE html>
 <html>
@@ -271,7 +271,7 @@ function generateEmailHTML(
 <body>
   <div class="container">
     <div class="header" style="background: #7c3aed;">
-      <h1 style="margin: 0;">🚚 Bestellung versandt</h1>
+      <h1 style="margin: 0;">Versandbestaetigung</h1>
       <p style="margin: 10px 0 0 0; opacity: 0.9;">${order.order_no}</p>
     </div>
     <div class="content">
@@ -298,7 +298,7 @@ function generateEmailHTML(
 
     case 'delivered':
       return {
-        subject: `Ihre Bestellung ${order.order_no} wurde zugestellt ✅`,
+        subject: `Lieferbestaetigung - Bestellung ${order.order_no}`,
         html: `
 <!DOCTYPE html>
 <html>
@@ -306,7 +306,7 @@ function generateEmailHTML(
 <body>
   <div class="container">
     <div class="header" style="background: #16a34a;">
-      <h1 style="margin: 0;">✅ Bestellung zugestellt</h1>
+      <h1 style="margin: 0;">Lieferbestaetigung</h1>
       <p style="margin: 10px 0 0 0; opacity: 0.9;">${order.order_no}</p>
     </div>
     <div class="content">
@@ -332,7 +332,7 @@ function generateEmailHTML(
 <body>
   <div class="container">
     <div class="header" style="background: #dc2626;">
-      <h1 style="margin: 0;">❌ Bestellung storniert</h1>
+      <h1 style="margin: 0;">Stornierung</h1>
       <p style="margin: 10px 0 0 0; opacity: 0.9;">${order.order_no}</p>
     </div>
     <div class="content">
@@ -365,7 +365,7 @@ function generateEmailHTML(
 <body>
   <div class="container">
     <div class="header">
-      <h1 style="margin: 0;">🌲 ${COMPANY.name}</h1>
+      <h1 style="margin: 0;">${COMPANY.name}</h1>
     </div>
     <div class="content">
       <p>${salutation},</p>
@@ -446,7 +446,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       updateOutboxEntry(outboxId, { status: 'failed', error_message: error.message });
-      console.error(`❌ Email failed (${templateType}) to ${order.email}:`, error);
+      console.error(`Email failed (${templateType}) to ${order.email}:`, error);
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 500 }
@@ -484,7 +484,7 @@ export async function POST(request: NextRequest) {
     };
     insertEvent(event);
 
-    console.log(`✅ Email sent (${templateType}) to ${order.email}: ${data?.id}`);
+    console.log(`Email sent (${templateType}) to ${order.email}: ${data?.id}`);
 
     return NextResponse.json({
       success: true,
