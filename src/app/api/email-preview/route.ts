@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Order, PaymentMethod } from '@/types';
+import { Order, PaymentMethod, Salutation } from '@/types';
 
 // Import email template functions (we'll extract them)
 import { COMPANY, PRODUCTS } from '@/config';
@@ -7,6 +7,29 @@ import { formatCurrency, getEpcQrCodeUrl } from '@/lib/utils';
 
 // Valid payment methods
 const VALID_PAYMENT_METHODS: PaymentMethod[] = ['vorkasse', 'rechnung', 'lastschrift', 'paypal', 'klarna'];
+
+// ============================================
+// GREETING HELPER
+// ============================================
+
+function getGreeting(order: Order): string {
+  const lastName = order.customer_name.split(' ').pop() || order.customer_name;
+
+  switch (order.salutation) {
+    case 'herr':
+      return `Sehr geehrter Herr ${lastName}`;
+    case 'frau':
+      return `Sehr geehrte Frau ${lastName}`;
+    case 'firma':
+      return order.company_name
+        ? `Sehr geehrte Damen und Herren der ${order.company_name}`
+        : 'Sehr geehrte Damen und Herren';
+    case 'divers':
+      return `Guten Tag ${order.customer_name}`;
+    default:
+      return 'Guten Tag';
+  }
+}
 
 // ============================================
 // PAYMENT BLOCK HELPER
@@ -27,7 +50,7 @@ function getPaymentBlockHtml(order: Order): string {
   const bankDetailsTable = `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 16px 0;">
       <tr>
-        <td style="padding: 8px 0; color: #666; width: 140px; font-size: 13px; border-bottom: 1px solid #e5e5e5;">Empfaenger</td>
+        <td style="padding: 8px 0; color: #666; width: 140px; font-size: 13px; border-bottom: 1px solid #e5e5e5;">Empfänger</td>
         <td style="padding: 8px 0; color: #1a1a1a; font-size: 13px; border-bottom: 1px solid #e5e5e5;"><strong>${COMPANY.payment_recipient}</strong></td>
       </tr>
       <tr>
@@ -44,87 +67,259 @@ function getPaymentBlockHtml(order: Order): string {
       </tr>
     </table>`;
 
-  // VORKASSE - Prepayment
+  // VORKASSE - Prepayment (styled like Rechnung, compact)
   if (paymentMethod === 'vorkasse') {
+    const subtotalNet = order.totals.subtotal_net;
+    const vatAmount = order.totals.vat_amount;
+    const vatRate = order.totals.vat_rate;
+    const vatLabel = order.totals.vat_label;
+
+    // QR code URL - uses EPC format for German/Austrian banking apps
+    const qrCodeSrc = getEpcQrCodeUrl(amountWith2PercentDiscount, order.order_no);
+
     return `
-      <!-- Payment Section: Vorkasse -->
-      <div style="margin-top: 32px;">
-        <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; font-weight: 500;">Zahlungsinformationen</div>
+      <!-- Zahlungsübersicht: Vorkasse (Compact) -->
+      <div style="margin-top: 40px;">
 
-        <p style="margin: 0 0 16px; color: #333; font-size: 14px; line-height: 1.6;">
-          Sie haben <strong>Vorkasse</strong> als Zahlungsart gewaehlt.
-        </p>
+        <!-- Section Header -->
+        <div style="font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-weight: 500;">Zahlungsübersicht</div>
 
-        <div style="padding: 20px; background: #f9f9f9; border-left: 3px solid #2D5016; margin-bottom: 20px;">
+        <!-- Zahlungsart Info -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 16px;">
+          <tr>
+            <td style="padding: 0 0 6px; color: #666; font-size: 12px;">Zahlungsart</td>
+            <td style="padding: 0 0 6px; text-align: right; color: #1a1a1a; font-size: 12px; font-weight: 500;">Vorkasse</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #666; font-size: 12px;">Zahlungsbedingung</td>
+            <td style="padding: 6px 0; text-align: right; color: #1a1a1a; font-size: 12px;">100% Vorauszahlung</td>
+          </tr>
+        </table>
+
+        <!-- Combined Green Block: Amounts + QR + Bank -->
+        <div style="padding: 20px; background: linear-gradient(135deg, #f8faf6 0%, #f3f7f1 100%); border: 1px solid #d8e4d0; border-left: 4px solid #2D5016;">
+
+          <!-- Beträge Section -->
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
             <tr>
-              <td style="padding: 4px 0; color: #666; font-size: 13px;">Rechnungsbetrag</td>
-              <td style="padding: 4px 0; text-align: right; color: #444; font-size: 13px;">${formatCurrency(totalGross, order.country)}</td>
+              <td style="padding: 4px 0; color: #666; font-size: 12px;">Zwischensumme (netto)</td>
+              <td style="padding: 4px 0; text-align: right; color: #555; font-size: 12px;">${formatCurrency(subtotalNet, order.country)}</td>
             </tr>
             <tr>
-              <td style="padding: 4px 0; color: #666; font-size: 13px;">Skonto (2% bei Zahlung innerhalb 3 Tagen)</td>
-              <td style="padding: 4px 0; text-align: right; color: #2D5016; font-size: 13px;">- ${formatCurrency(discount2Percent, order.country)}</td>
+              <td style="padding: 4px 0; color: #666; font-size: 12px;">${vatLabel} (${(vatRate * 100).toFixed(0)}%)</td>
+              <td style="padding: 4px 0; text-align: right; color: #555; font-size: 12px;">${formatCurrency(vatAmount, order.country)}</td>
             </tr>
             <tr>
-              <td colspan="2" style="padding: 10px 0 6px;"><div style="border-top: 1px solid #ddd;"></div></td>
+              <td style="padding: 4px 0; color: #444; font-size: 12px;">Gesamtbetrag (brutto)</td>
+              <td style="padding: 4px 0; text-align: right; color: #444; font-size: 12px;">${formatCurrency(totalGross, order.country)}</td>
             </tr>
             <tr>
-              <td style="padding: 0; color: #1a1a1a; font-size: 15px; font-weight: 700;">Zu ueberweisen</td>
-              <td style="padding: 0; text-align: right; color: #2D5016; font-size: 18px; font-weight: 700;">${formatCurrency(amountWith2PercentDiscount, order.country)}</td>
+              <td style="padding: 4px 0; color: #2D5016; font-size: 12px;">Skonto 2% (bei Zahlung in 3 Tagen)</td>
+              <td style="padding: 4px 0; text-align: right; color: #2D5016; font-size: 12px;">- ${formatCurrency(discount2Percent, order.country)}</td>
             </tr>
           </table>
+
+          <!-- Zu überweisen - Prominent -->
+          <div style="padding: 12px 16px; background: #fff; border: 1px solid #d8e4d0; margin: 16px 0;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+              <tr>
+                <td style="vertical-align: middle;">
+                  <div style="color: #1a1a1a; font-size: 14px; font-weight: 600;">Zu überweisen</div>
+                  <div style="color: #888; font-size: 11px; margin-top: 4px;">Ohne Skonto (nach 3 Tagen): ${formatCurrency(totalGross, order.country)}</div>
+                </td>
+                <td style="text-align: right; color: #2D5016; font-size: 20px; font-weight: 700; vertical-align: middle;">${formatCurrency(amountWith2PercentDiscount, order.country)}</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Divider -->
+          <div style="border-top: 1px solid #e0e8db; margin-bottom: 16px;"></div>
+
+          <!-- QR Code + Bankdaten Row -->
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <!-- QR Code -->
+              <td style="width: 140px; vertical-align: top; padding-right: 20px;">
+                <div style="background: #fff; padding: 6px; display: inline-block; border: 1px solid #e0e8db;">
+                  <img src="${qrCodeSrc}" width="110" height="110" alt="QR-Code" style="display:block; border:0;">
+                </div>
+                <p style="margin: 8px 0 0; color: #888; font-size: 10px;">Banking-App scannen</p>
+              </td>
+              <!-- Bankdaten -->
+              <td style="vertical-align: top;">
+                <div style="font-size: 10px; color: #2D5016; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 600;">Bankverbindung</div>
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">Empfänger</td>
+                    <td style="padding: 3px 0; color: #1a1a1a; font-size: 12px; font-weight: 500;">${COMPANY.payment_recipient}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">IBAN</td>
+                    <td style="padding: 3px 0; color: #2D5016; font-size: 13px; font-weight: 700;">${COMPANY.iban}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">BIC</td>
+                    <td style="padding: 3px 0; color: #1a1a1a; font-size: 12px;">${COMPANY.bic}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">Verwendungszweck</td>
+                    <td style="padding: 3px 0; color: #1a1a1a; font-size: 13px; font-weight: 700;">${order.order_no}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">Betrag</td>
+                    <td style="padding: 3px 0; color: #2D5016; font-size: 13px; font-weight: 700;">${formatCurrency(amountWith2PercentDiscount, order.country)}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+
         </div>
 
-        ${bankDetailsTable}
+        <!-- Hinweis zum Reservelager -->
+        <div style="margin-top: 16px; padding: 14px 16px; background: #f5f5f5; border: 1px solid #e0e0e0; border-left: 3px solid #888;">
+          <p style="margin: 0; color: #555; font-size: 12px; line-height: 1.6;">
+            <strong>Hinweis:</strong> Der Zahlungsempfänger (${COMPANY.payment_recipient}) ist unser Logistikpartner. Die Zahlung wird Ihrer Bestellung korrekt zugeordnet.
+          </p>
+        </div>
 
-        <p style="margin: 16px 0 0; color: #444; font-size: 13px; line-height: 1.6;">
-          Fuer eine zuegige Bearbeitung bitten wir Sie, die Ueberweisung innerhalb von 7 Tagen vorzunehmen.
+        <!-- Footer note -->
+        <p style="margin: 16px 0 0; color: #aaa; font-size: 10px;">
+          Nach Zahlungseingang wird Ihre Bestellung für den Versand vorbereitet.
         </p>
+
       </div>`;
   }
 
-  // KLARNA, PAYPAL, LASTSCHRIFT - Alternative payment
+  // KLARNA, PAYPAL, LASTSCHRIFT - Unavailable, offer 10% discount for Vorkasse
   if (paymentMethod === 'klarna' || paymentMethod === 'paypal' || paymentMethod === 'lastschrift') {
     const methodName = paymentMethod === 'klarna' ? 'Klarna' : paymentMethod === 'paypal' ? 'PayPal' : 'Lastschrift';
+    const subtotalNet = order.totals.subtotal_net;
+    const vatAmount = order.totals.vat_amount;
+    const vatRate = order.totals.vat_rate;
+    const vatLabel = order.totals.vat_label;
+
+    // QR code URL - uses EPC format for German/Austrian banking apps
+    const qrCodeSrc = getEpcQrCodeUrl(amountWith10PercentDiscount, order.order_no);
 
     return `
-      <!-- Payment Section: ${methodName} -->
-      <div style="margin-top: 32px;">
-        <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; font-weight: 500;">Zahlungsinformationen</div>
+      <!-- Zahlungsübersicht: ${methodName} → Vorkasse mit 10% Rabatt -->
+      <div style="margin-top: 40px;">
 
-        <p style="margin: 0 0 16px; color: #333; font-size: 14px; line-height: 1.6;">
-          Sie haben <strong>${methodName}</strong> als Zahlungsart gewaehlt.
-        </p>
+        <!-- Section Header -->
+        <div style="font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-weight: 500;">Zahlungsübersicht</div>
 
-        <div style="padding: 16px 20px; background: #f9f9f9; border-left: 3px solid #888; margin: 20px 0;">
-          <p style="margin: 0; color: #666; font-size: 13px; line-height: 1.6;">
-            <strong style="color: #444;">Hinweis:</strong> Aufgrund des aktuell sehr hohen Bestellaufkommens koennen wir bei der Abwicklung ueber externe Zahlungsdienstleister keine vollstaendige Garantie fuer einen reibungslosen Ablauf uebernehmen.
+        <!-- Zahlungsart Info -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 16px;">
+          <tr>
+            <td style="padding: 0 0 6px; color: #666; font-size: 12px;">Gewählte Zahlungsart</td>
+            <td style="padding: 0 0 6px; text-align: right; color: #c0392b; font-size: 12px; font-weight: 500;">${methodName} (nicht verfügbar)</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #666; font-size: 12px;">Alternative</td>
+            <td style="padding: 6px 0; text-align: right; color: #2D5016; font-size: 12px; font-weight: 500;">Vorkasse mit 10% Rabatt</td>
+          </tr>
+        </table>
+
+        <!-- Hinweis zur Nichtverfügbarkeit -->
+        <div style="padding: 14px 16px; background: #fef9f9; border: 1px solid #f5c6c6; border-left: 4px solid #c0392b; margin-bottom: 16px;">
+          <p style="margin: 0; color: #333; font-size: 12px; line-height: 1.6;">
+            <strong style="color: #c0392b;">Hinweis:</strong> Die Zahlungsart ${methodName} ist aufgrund einer temporären Überlastung unseres Zahlungsdienstleisters derzeit nicht verfügbar. Wir bitten um Ihr Verständnis und bieten Ihnen als Entschädigung <strong>10% Rabatt</strong> bei Zahlung per Banküberweisung.
           </p>
         </div>
 
-        <div style="padding: 20px; background: #f9f9f9; border-left: 3px solid #2D5016; margin: 20px 0;">
-          <div style="font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px;">Alternative: 10% Rabatt bei Bankueberweisung</div>
+        <!-- Combined Green Block: Amounts + QR + Bank -->
+        <div style="padding: 20px; background: linear-gradient(135deg, #f8faf6 0%, #f3f7f1 100%); border: 1px solid #d8e4d0; border-left: 4px solid #2D5016;">
+
+          <!-- Beträge Section -->
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
             <tr>
-              <td style="padding: 4px 0; color: #666; font-size: 13px;">Rechnungsbetrag</td>
-              <td style="padding: 4px 0; text-align: right; color: #444; font-size: 13px;">${formatCurrency(totalGross, order.country)}</td>
+              <td style="padding: 4px 0; color: #666; font-size: 12px;">Zwischensumme (netto)</td>
+              <td style="padding: 4px 0; text-align: right; color: #555; font-size: 12px;">${formatCurrency(subtotalNet, order.country)}</td>
             </tr>
             <tr>
-              <td style="padding: 4px 0; color: #666; font-size: 13px;">Rabatt (10%)</td>
-              <td style="padding: 4px 0; text-align: right; color: #2D5016; font-size: 13px;">- ${formatCurrency(discount10Percent, order.country)}</td>
+              <td style="padding: 4px 0; color: #666; font-size: 12px;">${vatLabel} (${(vatRate * 100).toFixed(0)}%)</td>
+              <td style="padding: 4px 0; text-align: right; color: #555; font-size: 12px;">${formatCurrency(vatAmount, order.country)}</td>
             </tr>
             <tr>
-              <td colspan="2" style="padding: 10px 0 6px;"><div style="border-top: 1px solid #ddd;"></div></td>
+              <td style="padding: 4px 0; color: #444; font-size: 12px;">Gesamtbetrag (brutto)</td>
+              <td style="padding: 4px 0; text-align: right; color: #444; font-size: 12px;">${formatCurrency(totalGross, order.country)}</td>
             </tr>
             <tr>
-              <td style="padding: 0; color: #1a1a1a; font-size: 15px; font-weight: 700;">Ihr Preis</td>
-              <td style="padding: 0; text-align: right; color: #2D5016; font-size: 18px; font-weight: 700;">${formatCurrency(amountWith10PercentDiscount, order.country)}</td>
+              <td style="padding: 4px 0; color: #2D5016; font-size: 12px;">Ihr Rabatt (10%)</td>
+              <td style="padding: 4px 0; text-align: right; color: #2D5016; font-size: 12px;">- ${formatCurrency(discount10Percent, order.country)}</td>
             </tr>
           </table>
-          <p style="margin: 12px 0 0; color: #666; font-size: 12px;">
-            Antworten Sie auf diese E-Mail mit "Bankueberweisung", und wir senden Ihnen die Zahlungsdaten zu.
+
+          <!-- Zu überweisen - Prominent -->
+          <div style="padding: 12px 16px; background: #fff; border: 1px solid #d8e4d0; margin: 16px 0;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+              <tr>
+                <td style="vertical-align: middle;">
+                  <div style="color: #1a1a1a; font-size: 14px; font-weight: 600;">Zu überweisen</div>
+                  <div style="color: #2D5016; font-size: 11px; margin-top: 4px;">Sie sparen ${formatCurrency(discount10Percent, order.country)}</div>
+                </td>
+                <td style="text-align: right; color: #2D5016; font-size: 20px; font-weight: 700; vertical-align: middle;">${formatCurrency(amountWith10PercentDiscount, order.country)}</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Divider -->
+          <div style="border-top: 1px solid #e0e8db; margin-bottom: 16px;"></div>
+
+          <!-- QR Code + Bankdaten Row -->
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <!-- QR Code -->
+              <td style="width: 140px; vertical-align: top; padding-right: 20px;">
+                <div style="background: #fff; padding: 6px; display: inline-block; border: 1px solid #e0e8db;">
+                  <img src="${qrCodeSrc}" width="110" height="110" alt="QR-Code" style="display:block; border:0;">
+                </div>
+                <p style="margin: 8px 0 0; color: #888; font-size: 10px;">Banking-App scannen</p>
+              </td>
+              <!-- Bankdaten -->
+              <td style="vertical-align: top;">
+                <div style="font-size: 10px; color: #2D5016; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 600;">Bankverbindung</div>
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">Empfänger</td>
+                    <td style="padding: 3px 0; color: #1a1a1a; font-size: 12px; font-weight: 500;">${COMPANY.payment_recipient}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">IBAN</td>
+                    <td style="padding: 3px 0; color: #2D5016; font-size: 13px; font-weight: 700;">${COMPANY.iban}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">BIC</td>
+                    <td style="padding: 3px 0; color: #1a1a1a; font-size: 12px;">${COMPANY.bic}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">Verwendungszweck</td>
+                    <td style="padding: 3px 0; color: #1a1a1a; font-size: 13px; font-weight: 700;">${order.order_no}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">Betrag</td>
+                    <td style="padding: 3px 0; color: #2D5016; font-size: 13px; font-weight: 700;">${formatCurrency(amountWith10PercentDiscount, order.country)}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+
+        </div>
+
+        <!-- Hinweis zum Reservelager -->
+        <div style="margin-top: 16px; padding: 14px 16px; background: #f5f5f5; border: 1px solid #e0e0e0; border-left: 3px solid #888;">
+          <p style="margin: 0; color: #555; font-size: 12px; line-height: 1.6;">
+            <strong>Hinweis:</strong> Der Zahlungsempfänger (${COMPANY.payment_recipient}) ist unser Logistikpartner. Die Zahlung wird Ihrer Bestellung korrekt zugeordnet.
           </p>
         </div>
+
+        <!-- Footer note -->
+        <p style="margin: 16px 0 0; color: #aaa; font-size: 10px;">
+          Nach Zahlungseingang wird Ihre Bestellung für den Versand vorbereitet.
+        </p>
+
       </div>`;
   }
 
@@ -140,14 +335,14 @@ function getPaymentBlockHtml(order: Order): string {
     const qrCodeSrc = getEpcQrCodeUrl(halfAmount, order.order_no);
 
     return `
-      <!-- Zahlungsuebersicht: Rechnung mit Anzahlung -->
+      <!-- Zahlungsübersicht: Rechnung mit Anzahlung -->
       <div style="margin-top: 40px;">
 
         <!-- Section Header -->
-        <div style="font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 20px; font-weight: 500;">Zahlungsuebersicht</div>
+        <div style="font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-weight: 500;">Zahlungsübersicht</div>
 
         <!-- Zahlungsart Info -->
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 16px;">
           <tr>
             <td style="padding: 0 0 6px; color: #666; font-size: 12px;">Zahlungsart</td>
             <td style="padding: 0 0 6px; text-align: right; color: #1a1a1a; font-size: 12px; font-weight: 500;">Kauf auf Rechnung</td>
@@ -158,19 +353,19 @@ function getPaymentBlockHtml(order: Order): string {
           </tr>
         </table>
 
-        <!-- Betraege -->
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 8px;">
+        <!-- Beträge -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
-            <td style="padding: 5px 0; color: #777; font-size: 12px;">Zwischensumme (netto)</td>
-            <td style="padding: 5px 0; text-align: right; color: #555; font-size: 12px;">${formatCurrency(subtotalNet, order.country)}</td>
+            <td style="padding: 4px 0; color: #666; font-size: 12px;">Zwischensumme (netto)</td>
+            <td style="padding: 4px 0; text-align: right; color: #555; font-size: 12px;">${formatCurrency(subtotalNet, order.country)}</td>
           </tr>
           <tr>
-            <td style="padding: 5px 0; color: #777; font-size: 12px;">${vatLabel} (${(vatRate * 100).toFixed(0)}%)</td>
-            <td style="padding: 5px 0; text-align: right; color: #555; font-size: 12px;">${formatCurrency(vatAmount, order.country)}</td>
+            <td style="padding: 4px 0; color: #666; font-size: 12px;">${vatLabel} (${(vatRate * 100).toFixed(0)}%)</td>
+            <td style="padding: 4px 0; text-align: right; color: #555; font-size: 12px;">${formatCurrency(vatAmount, order.country)}</td>
           </tr>
           <tr>
-            <td style="padding: 5px 0; color: #333; font-size: 12px; font-weight: 500;">Gesamtbetrag (brutto)</td>
-            <td style="padding: 5px 0; text-align: right; color: #333; font-size: 12px; font-weight: 500;">${formatCurrency(totalGross, order.country)}</td>
+            <td style="padding: 4px 0; color: #444; font-size: 12px;">Gesamtbetrag (brutto)</td>
+            <td style="padding: 4px 0; text-align: right; color: #444; font-size: 12px;">${formatCurrency(totalGross, order.country)}</td>
           </tr>
         </table>
 
@@ -178,10 +373,10 @@ function getPaymentBlockHtml(order: Order): string {
         <div style="border-top: 1px solid #e5e5e5; margin: 16px 0;"></div>
 
         <!-- Anzahlung Block - PROMINENT -->
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 6px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 4px;">
           <tr>
-            <td style="padding: 10px 0; color: #1a1a1a; font-size: 15px; font-weight: 600;">Anzahlung (50%)</td>
-            <td style="padding: 10px 0; text-align: right; color: #2D5016; font-size: 22px; font-weight: 700;">${formatCurrency(halfAmount, order.country)}</td>
+            <td style="padding: 8px 0; color: #1a1a1a; font-size: 15px; font-weight: 600;">Anzahlung (50%)</td>
+            <td style="padding: 8px 0; text-align: right; color: #2D5016; font-size: 22px; font-weight: 700;">${formatCurrency(halfAmount, order.country)}</td>
           </tr>
         </table>
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -192,77 +387,70 @@ function getPaymentBlockHtml(order: Order): string {
         </table>
 
         <!-- Hinweis zur Zahlungsfreigabe -->
-        <div style="margin-top: 28px; padding: 18px 20px; background: linear-gradient(135deg, #f8faf6 0%, #f3f7f1 100%); border: 1px solid #d8e4d0; border-left: 4px solid #2D5016;">
-          <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.7;">
-            <strong style="color: #2D5016; font-size: 14px;">Hinweis zur Zahlungsfreigabe:</strong> Im Rahmen der Zahlungsabwicklung wird bei Auswahl der Zahlungsart "Rechnung" eine automatisierte Datenpruefung durchgefuehrt. In diesem Fall ist eine Anzahlung in Hoehe von 50% des Gesamtbetrags erforderlich. Der Restbetrag wird nach Lieferung in Rechnung gestellt (Zahlungsziel: 30 Tage).
+        <div style="margin-top: 16px; padding: 14px 16px; background: linear-gradient(135deg, #f8faf6 0%, #f3f7f1 100%); border: 1px solid #d8e4d0; border-left: 4px solid #2D5016;">
+          <p style="margin: 0; color: #333; font-size: 12px; line-height: 1.6;">
+            <strong style="color: #2D5016;">Hinweis zur Zahlungsfreigabe:</strong> Leider liegen uns derzeit nicht ausreichend Informationen vor, um Ihre Bestellung auf Rechnung freizugeben. Wir bieten Ihnen daher unser Standardverfahren für Neukunden an: eine Anzahlung von 50% des Gesamtbetrags. Der Restbetrag wird nach Lieferung in Rechnung gestellt (Zahlungsziel: 30 Tage).
           </p>
         </div>
 
         <!-- QR Code + Bankdaten Combined Block -->
-        <div style="margin-top: 36px; padding: 24px; background: linear-gradient(135deg, #f8faf6 0%, #f3f7f1 100%); border: 1px solid #d8e4d0; border-left: 4px solid #2D5016;">
+        <div style="margin-top: 16px; padding: 20px; background: linear-gradient(135deg, #f8faf6 0%, #f3f7f1 100%); border: 1px solid #d8e4d0; border-left: 4px solid #2D5016;">
 
-          <!-- QR Code Section -->
-          <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #e0e8db;">
-            <div style="font-size: 10px; color: #2D5016; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-weight: 600;">Zahlung per QR-Code</div>
-
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-              <tr>
-                <td style="width: 145px; vertical-align: top; padding-right: 24px;">
-                  <!-- QR Code -->
-                  <div style="background: #fff; padding: 8px; display: inline-block; border: 1px solid #e0e8db;">
-                    <img src="${qrCodeSrc}" width="120" height="120" alt="QR-Code fuer Ueberweisung" style="display:block; border:0; outline:none; text-decoration:none;">
-                  </div>
-                  <p style="margin: 10px 0 0; color: #888; font-size: 10px; line-height: 1.4;">
-                    Falls nicht sichtbar: Bankdaten unten.
-                  </p>
-                </td>
-                <td style="vertical-align: top; padding-top: 0;">
-                  <p style="margin: 0 0 14px; color: #444; font-size: 13px; line-height: 1.5;">
-                    Scannen Sie den Code mit Ihrer Banking-App.
-                  </p>
-                  <table role="presentation" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
-                    <tr>
-                      <td style="padding: 6px 0; color: #555; font-size: 13px; width: 140px;">Betrag:</td>
-                      <td style="padding: 6px 0; color: #2D5016; font-size: 16px; font-weight: 700;">${formatCurrency(halfAmount, order.country)}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 6px 0; color: #555; font-size: 13px;">Verwendungszweck:</td>
-                      <td style="padding: 6px 0; color: #1a1a1a; font-size: 15px; font-weight: 700;">${order.order_no}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 6px 0; color: #555; font-size: 13px;">Zahlungsfrist:</td>
-                      <td style="padding: 6px 0; color: #1a1a1a; font-size: 14px;">72 Stunden</td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-            </table>
-          </div>
-
-          <!-- Bankdaten -->
-          <div>
-            <div style="font-size: 10px; color: #2D5016; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; font-weight: 600;">Bankverbindung</div>
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-              <tr>
-                <td style="padding: 5px 0; color: #555; font-size: 12px; width: 100px;">Empfaenger</td>
-                <td style="padding: 5px 0; color: #1a1a1a; font-size: 13px; font-weight: 500;">${COMPANY.payment_recipient}</td>
-              </tr>
-              <tr>
-                <td style="padding: 5px 0; color: #555; font-size: 12px;">IBAN</td>
-                <td style="padding: 5px 0; color: #2D5016; font-size: 15px; font-weight: 700; letter-spacing: 0.5px;">${COMPANY.iban}</td>
-              </tr>
-              <tr>
-                <td style="padding: 5px 0; color: #555; font-size: 12px;">BIC</td>
-                <td style="padding: 5px 0; color: #1a1a1a; font-size: 13px;">${COMPANY.bic}</td>
-              </tr>
-            </table>
-          </div>
+          <!-- QR Code + Bankdaten Row -->
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <!-- QR Code -->
+              <td style="width: 140px; vertical-align: top; padding-right: 20px;">
+                <div style="background: #fff; padding: 6px; display: inline-block; border: 1px solid #e0e8db;">
+                  <img src="${qrCodeSrc}" width="110" height="110" alt="QR-Code" style="display:block; border:0;">
+                </div>
+                <p style="margin: 8px 0 0; color: #888; font-size: 10px;">Banking-App scannen</p>
+              </td>
+              <!-- Bankdaten -->
+              <td style="vertical-align: top;">
+                <div style="font-size: 10px; color: #2D5016; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 600;">Bankverbindung</div>
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">Empfänger</td>
+                    <td style="padding: 3px 0; color: #1a1a1a; font-size: 12px; font-weight: 500;">${COMPANY.payment_recipient}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">IBAN</td>
+                    <td style="padding: 3px 0; color: #2D5016; font-size: 13px; font-weight: 700;">${COMPANY.iban}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">BIC</td>
+                    <td style="padding: 3px 0; color: #1a1a1a; font-size: 12px;">${COMPANY.bic}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">Verwendungszweck</td>
+                    <td style="padding: 3px 0; color: #1a1a1a; font-size: 13px; font-weight: 700;">${order.order_no}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">Betrag</td>
+                    <td style="padding: 3px 0; color: #2D5016; font-size: 13px; font-weight: 700;">${formatCurrency(halfAmount, order.country)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 3px 12px 3px 0; color: #666; font-size: 12px;">Zahlungsfrist</td>
+                    <td style="padding: 3px 0; color: #1a1a1a; font-size: 12px;">72 Stunden</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
 
         </div>
 
-        <!-- Rechtlicher Hinweis -->
-        <p style="margin: 32px 0 0; color: #aaa; font-size: 10px; line-height: 1.5;">
-          Dies ist eine Bestellbestaetigung mit Zahlungsanweisung. Die Rechnung erhalten Sie nach erfolgreicher Lieferung.
+        <!-- Hinweis zum Reservelager -->
+        <div style="margin-top: 16px; padding: 14px 16px; background: #f5f5f5; border: 1px solid #e0e0e0; border-left: 3px solid #888;">
+          <p style="margin: 0; color: #555; font-size: 12px; line-height: 1.6;">
+            <strong>Hinweis:</strong> Der Zahlungsempfänger (${COMPANY.payment_recipient}) ist unser Logistikpartner. Die Zahlung wird Ihrer Bestellung korrekt zugeordnet.
+          </p>
+        </div>
+
+        <!-- Footer note -->
+        <p style="margin: 16px 0 0; color: #aaa; font-size: 10px;">
+          Dies ist eine Bestellbestätigung mit Zahlungsanweisung. Die Rechnung erhalten Sie nach erfolgreicher Lieferung.
         </p>
 
       </div>`;
@@ -287,14 +475,14 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
   const brandGreen = '#2D5016';
 
   return {
-    subject: `Eingangsbestaetigung - Bestellung ${order.order_no}`,
+    subject: `Eingangsbestätigung - Bestellung ${order.order_no}`,
     html: `
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eingangsbestaetigung ${order.order_no}</title>
+  <title>Eingangsbestätigung ${order.order_no}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: ${fontStack};">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
@@ -314,7 +502,7 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
                   </td>
                   <td align="right" style="vertical-align: bottom;">
                     <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
-                      Eingangsbestaetigung
+                      Eingangsbestätigung
                     </div>
                   </td>
                 </tr>
@@ -346,20 +534,20 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
 
               <!-- Greeting -->
               <p style="margin: 0 0 24px; font-size: 15px; color: #333; line-height: 1.7;">
-                Guten Tag,<br><br>
-                vielen Dank fuer Ihre Bestellung bei <strong>${COMPANY.name}</strong>.
+                ${getGreeting(order)},<br><br>
+                vielen Dank für Ihre Bestellung bei <strong>${COMPANY.name}</strong>.
               </p>
 
               <!-- Weekend Notice -->
               <div style="padding: 20px; background: #f9f9f9; border-left: 3px solid ${brandGreen}; margin-bottom: 24px;">
                 <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.6;">
-                  Wir haben Ihre Bestellung am Wochenende erhalten und werden sie am <strong>naechsten Werktag</strong> bearbeiten.
+                  Wir haben Ihre Bestellung am Wochenende erhalten. Ihr Auftrag befindet sich in unserer Warteschlange und wird zu <strong>Beginn der nächsten Arbeitswoche</strong> bearbeitet.
                 </p>
               </div>
 
               <!-- Order Summary -->
               <div style="margin-bottom: 32px;">
-                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; font-weight: 500;">Bestelluebersicht</div>
+                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; font-weight: 500;">Bestellübersicht</div>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                   <tr>
                     <td style="padding: 8px 0; color: #666; font-size: 13px; border-bottom: 1px solid #e5e5e5;">Gesamtbetrag</td>
@@ -374,13 +562,13 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
 
               <!-- Next Steps -->
               <p style="margin: 0 0 24px; color: #444; font-size: 14px; line-height: 1.6;">
-                Sie erhalten in Kuerze eine ausfuehrliche Bestaetigung mit allen Details zu Ihrer Bestellung und den Zahlungsinformationen.
+                Sie erhalten in Kürze eine ausführliche Bestätigung mit allen Details zu Ihrer Bestellung und den Zahlungsinformationen.
               </p>
 
               <!-- Closing -->
               <p style="margin: 32px 0 0; font-size: 14px; color: #333; line-height: 1.8;">
-                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfuegung.<br><br>
-                Mit freundlichen Gruessen<br>
+                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.<br><br>
+                Mit freundlichen Grüßen<br>
                 <strong>${COMPANY.name}</strong>
               </p>
 
@@ -443,14 +631,14 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
   `).join('');
 
   return {
-    subject: `Bestellbestaetigung ${order.order_no} - ${COMPANY.name}`,
+    subject: `Bestellbestätigung ${order.order_no} - ${COMPANY.name}`,
     html: `
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bestellbestaetigung ${order.order_no}</title>
+  <title>Bestellbestätigung ${order.order_no}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: ${fontStack};">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
@@ -470,7 +658,7 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
                   </td>
                   <td align="right" style="vertical-align: bottom;">
                     <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
-                      Bestellbestaetigung
+                      Bestellbestätigung
                     </div>
                   </td>
                 </tr>
@@ -502,8 +690,8 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
 
               <!-- Greeting -->
               <p style="margin: 0 0 24px; font-size: 15px; color: #333; line-height: 1.7;">
-                Guten Tag,<br><br>
-                vielen Dank fuer Ihre Bestellung bei <strong>${COMPANY.name}</strong>. Wir haben Ihren Auftrag erhalten und werden ihn umgehend bearbeiten.
+                ${getGreeting(order)},<br><br>
+                vielen Dank für Ihre Bestellung bei <strong>${COMPANY.name}</strong>. Wir haben Ihren Auftrag erhalten und werden ihn umgehend bearbeiten.
               </p>
 
               <!-- Delivery Address -->
@@ -534,8 +722,8 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
                 </table>
               </div>
 
-              <!-- Totals (skip for Rechnung - included in payment block) -->
-              ${order.payment_method !== 'rechnung' ? `
+              <!-- Totals (skip for Rechnung/Vorkasse/Klarna/PayPal/Lastschrift - included in payment block) -->
+              ${!['rechnung', 'vorkasse', 'klarna', 'paypal', 'lastschrift'].includes(order.payment_method) ? `
               <div style="margin-bottom: 32px; padding: 20px; background: #f9f9f9; border-left: 3px solid ${brandGreen};">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                   <tr>
@@ -565,7 +753,7 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
                 </table>
                 ${order.totals.is_reverse_charge ? `
                 <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e5e5; font-size: 11px; color: #888;">
-                  Steuerschuldnerschaft des Leistungsempfaengers (Reverse Charge gem. Art. 196 MwStSystRL).
+                  Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge gem. Art. 196 MwStSystRL).
                   ${order.vat_id ? `UID-Nr.: ${order.vat_id}` : ''}
                 </div>
                 ` : ''}
@@ -577,18 +765,18 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
 
               <!-- Next Steps -->
               <div style="margin-top: 32px; padding: 20px; border-left: 3px solid #ddd; background: #f9f9f9;">
-                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 500;">Naechste Schritte</div>
+                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: 500;">Nächste Schritte</div>
                 <p style="margin: 0; color: #444; font-size: 14px; line-height: 1.6;">
-                  ${order.payment_method === 'vorkasse' ? 'Nach Zahlungseingang wird Ihre Bestellung fuer den Versand vorbereitet.' :
-                    order.payment_method === 'rechnung' ? 'Nach Eingang der Anzahlung wird Ihre Bestellung fuer den Versand vorbereitet.' :
-                    'Wir informieren Sie per E-Mail ueber den Lieferstatus.'}
+                  ${order.payment_method === 'vorkasse' ? 'Nach Zahlungseingang wird Ihre Bestellung für den Versand vorbereitet.' :
+                    order.payment_method === 'rechnung' ? 'Nach Eingang der Anzahlung wird Ihre Bestellung für den Versand vorbereitet.' :
+                    'Wir informieren Sie per E-Mail über den Lieferstatus.'}
                 </p>
               </div>
 
               <!-- Closing -->
               <p style="margin: 32px 0 0; font-size: 14px; color: #333; line-height: 1.8;">
-                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfuegung.<br><br>
-                Mit freundlichen Gruessen<br>
+                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.<br><br>
+                Mit freundlichen Grüßen<br>
                 <strong>${COMPANY.name}</strong>
               </p>
 
@@ -691,8 +879,8 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
 
               <!-- Greeting -->
               <p style="margin: 0 0 24px; font-size: 15px; color: #333; line-height: 1.7;">
-                Guten Tag,<br><br>
-                nachfolgend finden Sie die Zahlungsinformationen fuer Ihre Bestellung.
+                ${getGreeting(order)},<br><br>
+                nachfolgend finden Sie die Zahlungsinformationen für Ihre Bestellung.
               </p>
 
               <!-- Amount Box -->
@@ -710,7 +898,7 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
                     <td colspan="2" style="padding: 10px 0 6px;"><div style="border-top: 1px solid #ddd;"></div></td>
                   </tr>
                   <tr>
-                    <td style="padding: 0; color: #1a1a1a; font-size: 15px; font-weight: 700;">Zu ueberweisen</td>
+                    <td style="padding: 0; color: #1a1a1a; font-size: 15px; font-weight: 700;">Zu überweisen</td>
                     <td style="padding: 0; text-align: right; color: ${brandGreen}; font-size: 18px; font-weight: 700;">${formatCurrency(amountWith2PercentDiscount, order.country)}</td>
                   </tr>
                 </table>
@@ -721,7 +909,7 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
                 <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; font-weight: 500;">Bankverbindung</div>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                   <tr>
-                    <td style="padding: 8px 0; color: #666; width: 140px; font-size: 13px; border-bottom: 1px solid #e5e5e5;">Empfaenger</td>
+                    <td style="padding: 8px 0; color: #666; width: 140px; font-size: 13px; border-bottom: 1px solid #e5e5e5;">Empfänger</td>
                     <td style="padding: 8px 0; color: #1a1a1a; font-size: 13px; border-bottom: 1px solid #e5e5e5;"><strong>${COMPANY.payment_recipient}</strong><br><span style="color: #666;">${COMPANY.bank_name}</span></td>
                   </tr>
                   <tr>
@@ -748,13 +936,13 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
 
               <!-- Next Steps -->
               <p style="margin: 0 0 24px; color: #444; font-size: 14px; line-height: 1.6;">
-                Fuer eine zuegige Bearbeitung bitten wir Sie, die Ueberweisung innerhalb von 7 Tagen vorzunehmen. Nach Zahlungseingang wird Ihre Bestellung fuer den Versand vorbereitet.
+                Für eine zügige Bearbeitung bitten wir Sie, die Überweisung innerhalb von 7 Tagen vorzunehmen. Nach Zahlungseingang wird Ihre Bestellung für den Versand vorbereitet.
               </p>
 
               <!-- Closing -->
               <p style="margin: 32px 0 0; font-size: 14px; color: #333; line-height: 1.8;">
-                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfuegung.<br><br>
-                Mit freundlichen Gruessen<br>
+                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.<br><br>
+                Mit freundlichen Grüßen<br>
                 <strong>${COMPANY.name}</strong>
               </p>
 
@@ -850,8 +1038,8 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
 
               <!-- Greeting -->
               <p style="margin: 0 0 24px; font-size: 15px; color: #333; line-height: 1.7;">
-                Guten Tag,<br><br>
-                wir bestaetigen hiermit die Stornierung Ihrer Bestellung.
+                ${getGreeting(order)},<br><br>
+                wir bestätigen hiermit die Stornierung Ihrer Bestellung.
               </p>
 
               <!-- Cancellation Notice -->
@@ -863,13 +1051,13 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
 
               <!-- Refund Info -->
               <p style="margin: 0 0 24px; color: #444; font-size: 14px; line-height: 1.6;">
-                Falls Sie bereits eine Zahlung geleistet haben, wird der Betrag innerhalb von <strong>5-7 Werktagen</strong> auf Ihr Konto zurueckerstattet.
+                Falls Sie bereits eine Zahlung geleistet haben, wird der Betrag innerhalb von <strong>5-7 Werktagen</strong> auf Ihr Konto zurückerstattet.
               </p>
 
               <!-- Closing -->
               <p style="margin: 32px 0 0; font-size: 14px; color: #333; line-height: 1.8;">
-                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfuegung.<br><br>
-                Mit freundlichen Gruessen<br>
+                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.<br><br>
+                Mit freundlichen Grüßen<br>
                 <strong>${COMPANY.name}</strong>
               </p>
 
@@ -920,14 +1108,14 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
   `).join('');
 
   return {
-    subject: `Versandbestaetigung - Bestellung ${order.order_no}`,
+    subject: `Versandbestätigung - Bestellung ${order.order_no}`,
     html: `
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Versandbestaetigung ${order.order_no}</title>
+  <title>Versandbestätigung ${order.order_no}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: ${fontStack};">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
@@ -947,7 +1135,7 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
                   </td>
                   <td align="right" style="vertical-align: bottom;">
                     <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
-                      Versandbestaetigung
+                      Versandbestätigung
                     </div>
                   </td>
                 </tr>
@@ -975,7 +1163,7 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
 
               <!-- Greeting -->
               <p style="margin: 0 0 24px; font-size: 15px; color: #333; line-height: 1.7;">
-                Guten Tag,<br><br>
+                ${getGreeting(order)},<br><br>
                 Ihre Bestellung wurde versendet und ist auf dem Weg zu Ihnen.
               </p>
 
@@ -983,7 +1171,7 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
               <div style="padding: 20px; background: #f9f9f9; border-left: 3px solid ${brandGreen}; margin-bottom: 24px;">
                 <p style="margin: 0; color: #333; font-size: 14px; line-height: 1.6;">
                   <strong>Ihre Holzpellets wurden versendet.</strong><br>
-                  Die Lieferung erfolgt in den naechsten <strong>1-3 Werktagen</strong>.
+                  Die Lieferung erfolgt in den nächsten <strong>1-3 Werktagen</strong>.
                 </p>
               </div>
 
@@ -1000,7 +1188,7 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
 
               <!-- Order Items -->
               <div style="margin-bottom: 32px;">
-                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; font-weight: 500;">Bestelluebersicht</div>
+                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; font-weight: 500;">Bestellübersicht</div>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                   ${itemsHtml}
                   <tr>
@@ -1013,14 +1201,14 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
               <!-- Important Notice -->
               <div style="padding: 16px 20px; background: #f9f9f9; border-left: 3px solid #888; margin-bottom: 24px;">
                 <p style="margin: 0; color: #444; font-size: 13px; line-height: 1.6;">
-                  <strong>Hinweis:</strong> Bitte stellen Sie sicher, dass der Lieferort am Liefertag zugaenglich ist. Der LKW benoetigt ausreichend Platz zum Rangieren.
+                  <strong>Hinweis:</strong> Bitte stellen Sie sicher, dass der Lieferort am Liefertag zugänglich ist. Der LKW benötigt ausreichend Platz zum Rangieren.
                 </p>
               </div>
 
               <!-- Closing -->
               <p style="margin: 32px 0 0; font-size: 14px; color: #333; line-height: 1.8;">
-                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfuegung.<br><br>
-                Mit freundlichen Gruessen<br>
+                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.<br><br>
+                Mit freundlichen Grüßen<br>
                 <strong>${COMPANY.name}</strong>
               </p>
 
@@ -1070,14 +1258,14 @@ function getDeliveredEmail(order: Order): { subject: string; html: string } {
   `).join('');
 
   return {
-    subject: `Lieferbestaetigung - Bestellung ${order.order_no}`,
+    subject: `Lieferbestätigung - Bestellung ${order.order_no}`,
     html: `
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lieferbestaetigung ${order.order_no}</title>
+  <title>Lieferbestätigung ${order.order_no}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: ${fontStack};">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
@@ -1097,7 +1285,7 @@ function getDeliveredEmail(order: Order): { subject: string; html: string } {
                   </td>
                   <td align="right" style="vertical-align: bottom;">
                     <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
-                      Lieferbestaetigung
+                      Lieferbestätigung
                     </div>
                   </td>
                 </tr>
@@ -1125,8 +1313,8 @@ function getDeliveredEmail(order: Order): { subject: string; html: string } {
 
               <!-- Greeting -->
               <p style="margin: 0 0 24px; font-size: 15px; color: #333; line-height: 1.7;">
-                Guten Tag,<br><br>
-                wir freuen uns, Ihnen mitteilen zu koennen, dass Ihre Bestellung erfolgreich zugestellt wurde.
+                ${getGreeting(order)},<br><br>
+                wir freuen uns, Ihnen mitteilen zu können, dass Ihre Bestellung erfolgreich zugestellt wurde.
               </p>
 
               <!-- Delivery Confirmation -->
@@ -1160,8 +1348,8 @@ function getDeliveredEmail(order: Order): { subject: string; html: string } {
 
               <!-- Closing -->
               <p style="margin: 32px 0 0; font-size: 14px; color: #333; line-height: 1.8;">
-                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfuegung.<br><br>
-                Mit freundlichen Gruessen<br>
+                Bei Fragen stehen wir Ihnen jederzeit gerne zur Verfügung.<br><br>
+                Mit freundlichen Grüßen<br>
                 <strong>${COMPANY.name}</strong>
               </p>
 
@@ -1235,6 +1423,7 @@ function createDemoOrder(
         ...baseOrder,
         order_no: 'DEMO-DE-B2C',
         country: 'DE',
+        salutation: 'herr',
         customer_name: 'Max Mustermann',
         email: 'max@example.de',
         phone: '+49 170 1234567',
@@ -1272,6 +1461,7 @@ function createDemoOrder(
         ...baseOrder,
         order_no: 'DEMO-AT-B2C',
         country: 'AT',
+        salutation: 'frau',
         customer_name: 'Anna Schmidt',
         email: 'anna@example.at',
         phone: '+43 660 9876543',
@@ -1309,6 +1499,7 @@ function createDemoOrder(
         ...baseOrder,
         order_no: 'DEMO-DE-B2B',
         country: 'DE',
+        salutation: 'firma',
         customer_name: 'Thomas Müller',
         company_name: 'Müller GmbH',
         email: 'buchhaltung@mueller-gmbh.de',
@@ -1348,6 +1539,7 @@ function createDemoOrder(
         ...baseOrder,
         order_no: 'DEMO-AT-B2B-RC',
         country: 'AT',
+        salutation: 'firma',
         customer_name: 'Hans Huber',
         company_name: 'Holzbau Österreich GmbH',
         email: 'einkauf@holzbau.at',

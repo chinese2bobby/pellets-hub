@@ -11,13 +11,13 @@ envFile.split('\n').forEach(line => {
 });
 
 const resend = new Resend(env.RESEND_API_KEY);
-const TO_EMAIL = 'vielgluck2sie@proton.me';
+const TO_EMAIL = 'china_bobby@outlook.com';
 const FROM_EMAIL = env.RESEND_FROM_EMAIL || 'bestellung@pelletor.at';
 const FROM_NAME = 'Pelletor Test';
 
 // Fetch email HTML from preview endpoint
 async function fetchEmailHtml(type: string, order: string, payment?: string): Promise<string> {
-  const url = new URL('http://localhost:3000/api/email-preview');
+  const url = new URL('http://localhost:3001/api/email-preview');
   url.searchParams.set('type', type);
   url.searchParams.set('order', order);
   if (payment) url.searchParams.set('payment', payment);
@@ -49,38 +49,37 @@ async function sendEmail(subject: string, html: string) {
 }
 
 async function main() {
-  console.log('📧 Sending all email variations to:', TO_EMAIL);
+  console.log('📧 Sending email variations to:', TO_EMAIL);
   console.log('');
 
-  // 1. Confirmation emails with different payment methods
-  const paymentMethods = ['vorkasse', 'rechnung', 'klarna', 'paypal', 'lastschrift'];
-
-  for (const payment of paymentMethods) {
-    const html = await fetchEmailHtml('confirmation', 'de-b2c', payment);
-    await sendEmail(`[TEST] Bestellbestätigung – ${payment.toUpperCase()}`, html);
-    await new Promise(r => setTimeout(r, 1000)); // Rate limit
-  }
-
-  // 2. Other email types
-  const otherTypes = [
-    { type: 'shipped', label: 'VERSAND' },
-    { type: 'cancelled', label: 'STORNIERT' },
-    { type: 'weekend_hello', label: 'WOCHENENDE' },
-    { type: 'payment_instructions', label: 'ZAHLUNGSINFO' },
+  const orderTypes = [
+    { code: 'de-b2c', label: 'DE B2C' },
+    { code: 'de-b2b', label: 'DE B2B' },
+    { code: 'at-b2c', label: 'AT B2C' },
+    { code: 'at-b2b-rc', label: 'AT B2B (RC)' },
   ];
 
-  for (const { type, label } of otherTypes) {
-    const html = await fetchEmailHtml(type, 'de-b2c');
-    await sendEmail(`[TEST] ${label}`, html);
-    await new Promise(r => setTimeout(r, 1000));
+  const paymentMethods = ['vorkasse', 'rechnung', 'klarna'];
+
+  let count = 0;
+
+  // All order types with all payment methods
+  for (const order of orderTypes) {
+    for (const payment of paymentMethods) {
+      const html = await fetchEmailHtml('confirmation', order.code, payment);
+      await sendEmail(`[TEST] ${order.label} – ${payment.toUpperCase()}`, html);
+      await new Promise(r => setTimeout(r, 800));
+      count++;
+    }
   }
 
-  // 3. AT B2B Reverse Charge example
-  const rcHtml = await fetchEmailHtml('confirmation', 'at-b2b-rc', 'vorkasse');
-  await sendEmail(`[TEST] Bestellbestätigung – AT REVERSE CHARGE`, rcHtml);
+  // Weekend hello
+  const weekendHtml = await fetchEmailHtml('weekend_hello', 'de-b2c');
+  await sendEmail(`[TEST] Eingangsbestätigung – WOCHENENDE`, weekendHtml);
+  count++;
 
   console.log('');
-  console.log('✅ All emails sent!');
+  console.log(`✅ All ${count} emails sent!`);
 }
 
 main().catch(console.error);
