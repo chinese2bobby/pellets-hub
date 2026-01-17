@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getOrdersByEmail } from '@/lib/memory-store';
+import { getOrdersByEmail } from '@/lib/db';
 
 export async function GET() {
   try {
     const user = await getSession();
-    
+
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'Not authenticated' },
@@ -13,7 +13,7 @@ export async function GET() {
       );
     }
 
-    const orders = getOrdersByEmail(user.email);
+    const orders = await getOrdersByEmail(user.email);
 
     return NextResponse.json({
       success: true,
@@ -27,6 +27,8 @@ export async function GET() {
     );
   }
 }
+
+
 
 
 

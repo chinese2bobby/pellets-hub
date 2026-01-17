@@ -48,8 +48,8 @@ export default function CustomerOrdersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-gray-400" />
+      <div className="min-h-screen bg-gradient-to-br from-[#FAFAF8] via-white to-[#f0f0e8] flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 animate-spin text-[#2D5016]" />
       </div>
     );
   }
@@ -57,7 +57,7 @@ export default function CustomerOrdersPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
+    <div className="min-h-screen bg-gradient-to-br from-[#FAFAF8] via-white to-[#f0f0e8]">
       <Header variant="customer" userName={user.name} />
 
       <main className="container mx-auto px-4 py-8">

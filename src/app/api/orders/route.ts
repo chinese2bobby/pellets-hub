@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllOrders, getOrdersByType, getMetrics } from '@/lib/memory-store';
+import { getAllOrders, getOrdersByType, getMetrics } from '@/lib/db';
 
 // CORS headers
 const corsHeaders = {
@@ -13,24 +13,32 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const type = searchParams.get('type'); // 'normal' | 'preorder' | null
-  
-  let orders;
-  if (type === 'normal' || type === 'preorder') {
-    orders = getOrdersByType(type);
-  } else {
-    orders = getAllOrders();
-  }
-  
-  const metrics = getMetrics();
-  
-  return NextResponse.json({
-    success: true,
-    data: {
-      orders,
-      metrics,
+  try {
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type'); // 'normal' | 'preorder' | null
+
+    let orders;
+    if (type === 'normal' || type === 'preorder') {
+      orders = await getOrdersByType(type);
+    } else {
+      orders = await getAllOrders();
     }
-  }, { headers: corsHeaders });
+
+    const metrics = await getMetrics();
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        orders,
+        metrics,
+      }
+    }, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch orders',
+    }, { status: 500, headers: corsHeaders });
+  }
 }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOrderById, getOrderByOrderNo, updateOrder, insertEvent } from '@/lib/memory-store';
+import { getOrderById, getOrderByOrderNo, updateOrder, insertEvent } from '@/lib/db';
 import { generateInvoiceHTML, generateInvoiceNo } from '@/lib/invoice/generate-invoice';
 import { OrderEvent } from '@/types';
 
@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
 
     // Find order
     const order = orderId
-      ? getOrderById(orderId)
-      : getOrderByOrderNo(orderNo!);
+      ? await getOrderById(orderId)
+      : await getOrderByOrderNo(orderNo!);
 
     if (!order) {
       return NextResponse.json(
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     // Update order with invoice info if not already done
     if (!order.invoice_generated_at) {
-      updateOrder(order.id, {
+      await updateOrder(order.id, {
         invoice_url: `/api/orders/invoice?orderId=${order.id}&format=html`,
         invoice_generated_at: generatedAt.toISOString(),
       });
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         },
         created_at: generatedAt.toISOString(),
       };
-      insertEvent(event);
+      await insertEvent(event);
     }
 
     if (format === 'pdf') {
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const order = getOrderById(orderId);
+    const order = await getOrderById(orderId);
     if (!order) {
       return NextResponse.json(
         { success: false, error: 'Order not found' },
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Update order
-    updateOrder(order.id, {
+    await updateOrder(order.id, {
       invoice_url: `/api/orders/invoice?orderId=${order.id}&format=html`,
       invoice_generated_at: generatedAt.toISOString(),
     });
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       },
       created_at: generatedAt.toISOString(),
     };
-    insertEvent(event);
+    await insertEvent(event);
 
     // If sendEmail is true, also send the invoice via email
     if (sendEmail) {

@@ -1,7 +1,6 @@
-// Simple auth for testing - Mastermind Edition 🧠
-// Replace with proper auth (NextAuth, Supabase Auth) in production
-
+// Auth with Supabase database
 import { cookies } from 'next/headers';
+import { createAdminSupabaseClient } from '@/lib/supabase/server';
 
 export interface AuthUser {
   id: string;
@@ -10,23 +9,15 @@ export interface AuthUser {
   role: 'admin' | 'customer';
 }
 
-// Test accounts - Mastermind style 🧠
-export const TEST_ACCOUNTS = {
-  admin: {
-    id: 'admin-mastermind-001',
-    email: 'admin@pelletor.de',
-    password: 'Mastermind2025!',
-    name: 'Mastermind Admin',
-    role: 'admin' as const,
-  },
-  customer: {
-    id: 'customer-mastermind-001', 
-    email: 'kevin@mastermind.io',
-    password: 'Kevin2025!',
-    name: 'Kevin Hall',
-    role: 'customer' as const,
-  },
-};
+// Hash password with SHA-256 (same as registration/reset)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 const SESSION_COOKIE = 'pelletor_session';
 
@@ -54,15 +45,47 @@ function parseSessionToken(token: string): AuthUser | null {
 }
 
 export async function login(email: string, password: string): Promise<AuthUser | null> {
-  // Check admin account
-  if (email === TEST_ACCOUNTS.admin.email && password === TEST_ACCOUNTS.admin.password) {
+  try {
+    const supabase = await createAdminSupabaseClient();
+
+    // Find user by email
+    const { data: dbUser, error } = await supabase
+      .from('users')
+      .select('id, email, password_hash, role')
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (error || !dbUser) {
+      console.log('User not found:', email);
+      return null;
+    }
+
+    // Verify password
+    const passwordHash = await hashPassword(password);
+    if (dbUser.password_hash !== passwordHash) {
+      console.log('Invalid password for:', email);
+      return null;
+    }
+
+    // Get profile for name
+    const { data: profile } = await supabase
+      .from('customer_profiles')
+      .select('first_name, last_name')
+      .eq('user_id', dbUser.id)
+      .single();
+
+    const userName = profile
+      ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+      : email.split('@')[0];
+
     const user: AuthUser = {
-      id: TEST_ACCOUNTS.admin.id,
-      email: TEST_ACCOUNTS.admin.email,
-      name: TEST_ACCOUNTS.admin.name,
-      role: TEST_ACCOUNTS.admin.role,
+      id: dbUser.id,
+      email: dbUser.email,
+      name: userName || 'Kunde',
+      role: dbUser.role === 'admin' || dbUser.role === 'ops' ? 'admin' : 'customer',
     };
-    
+
+    // Set session cookie
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE, createSessionToken(user), {
       httpOnly: true,
@@ -71,32 +94,13 @@ export async function login(email: string, password: string): Promise<AuthUser |
       maxAge: 24 * 60 * 60, // 24 hours
       path: '/',
     });
-    
+
+    console.log('✅ Login successful:', email, 'role:', user.role);
     return user;
+  } catch (err) {
+    console.error('Login error:', err);
+    return null;
   }
-  
-  // Check customer account
-  if (email === TEST_ACCOUNTS.customer.email && password === TEST_ACCOUNTS.customer.password) {
-    const user: AuthUser = {
-      id: TEST_ACCOUNTS.customer.id,
-      email: TEST_ACCOUNTS.customer.email,
-      name: TEST_ACCOUNTS.customer.name,
-      role: TEST_ACCOUNTS.customer.role,
-    };
-    
-    const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE, createSessionToken(user), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60,
-      path: '/',
-    });
-    
-    return user;
-  }
-  
-  return null;
 }
 
 export async function logout(): Promise<void> {

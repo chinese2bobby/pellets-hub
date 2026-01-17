@@ -1,6 +1,5 @@
 // Invoice HTML Generator - Pelletor
-// Modern design adapted from Heizline template
-// Supports DE 7% MwSt, AT 20% USt, AT B2B Reverse Charge
+// Corporate professional design for German/Austrian customers
 
 import { Order, Salutation } from '@/types';
 import { formatCurrency } from '@/lib/utils';
@@ -12,7 +11,6 @@ export interface InvoiceData {
   generatedAt: Date;
 }
 
-// Get proper salutation based on customer data
 export function getSalutation(
   salutation: Salutation | undefined,
   customerName: string,
@@ -21,28 +19,20 @@ export function getSalutation(
   if (hasCompany || salutation === 'firma') {
     return 'Sehr geehrte Damen und Herren';
   }
-
   const lastName = customerName.split(' ').pop() || customerName;
-
   switch (salutation) {
-    case 'herr':
-      return `Sehr geehrter Herr ${lastName}`;
-    case 'frau':
-      return `Sehr geehrte Frau ${lastName}`;
-    case 'divers':
-      return `Guten Tag ${customerName}`;
-    default:
-      return `Guten Tag ${customerName}`;
+    case 'herr': return `Sehr geehrter Herr ${lastName}`;
+    case 'frau': return `Sehr geehrte Frau ${lastName}`;
+    case 'divers': return `Guten Tag ${customerName}`;
+    default: return `Guten Tag ${customerName}`;
   }
 }
 
-// Generate invoice number based on country and order sequence
 export function generateInvoiceNo(order: Order): string {
   const year = new Date().getFullYear();
   return `RE-${order.country}-${year}-${String(order.order_seq).padStart(6, '0')}`;
 }
 
-// Format date in German style
 function formatDateDE(date: Date): string {
   return date.toLocaleDateString('de-DE', {
     day: '2-digit',
@@ -51,7 +41,6 @@ function formatDateDE(date: Date): string {
   });
 }
 
-// Generate EPC QR Code URL for bank transfer
 function generateEpcQrUrl(
   amount: number,
   reference: string,
@@ -61,137 +50,103 @@ function generateEpcQrUrl(
 ): string {
   const amountStr = (amount / 100).toFixed(2);
   const epcData = [
-    'BCD',           // Service Tag
-    '002',           // Version
-    '1',             // Character Set (UTF-8)
-    'SCT',           // SEPA Credit Transfer
+    'BCD', '002', '1', 'SCT',
     bic.replace(/\s/g, ''),
     recipient.substring(0, 70),
     iban.replace(/\s/g, ''),
     `EUR${amountStr}`,
-    '',              // Purpose
-    '',              // Structured Reference
-    reference.substring(0, 140),
-    ''               // Info
+    '', '', reference.substring(0, 140), ''
   ].join('\n');
-
-  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(epcData)}`;
+  return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(epcData)}`;
 }
 
-// Generate the full invoice HTML
 export function generateInvoiceHTML(data: InvoiceData): string {
   const { invoiceNo, order, generatedAt } = data;
   const hasCompany = Boolean(order.company_name);
   const salutation = getSalutation(order.salutation, order.customer_name, hasCompany);
   const isReverseCharge = order.totals.is_reverse_charge === true;
 
-  // Format amounts
   const subtotalNet = order.totals.subtotal_net;
   const vatAmount = order.totals.vat_amount;
   const totalGross = order.totals.total_gross;
   const vatRate = order.totals.vat_rate;
   const vatLabel = order.totals.vat_label;
 
-  // QR Code for bank transfer (only for Vorkasse)
-  const qrCodeUrl = order.payment_method === 'vorkasse'
-    ? generateEpcQrUrl(
-        totalGross,
-        `Rechnung ${order.order_no}`,
-        COMPANY.iban,
-        COMPANY.bic,
-        COMPANY.payment_recipient
-      )
+  // Payment method labels
+  const paymentMethodLabels: Record<string, string> = {
+    vorkasse: 'Vorkasse (Überweisung)',
+    lastschrift: 'SEPA-Lastschrift',
+    paypal: 'PayPal',
+    klarna: 'Klarna',
+    rechnung: 'Kauf auf Rechnung'
+  };
+  const paymentMethodLabel = paymentMethodLabels[order.payment_method] || order.payment_method;
+
+  // For "rechnung" payment - 50% prepayment for new customers
+  const isRechnungPayment = order.payment_method === 'rechnung';
+  const prepaymentAmount = isRechnungPayment ? Math.round(totalGross * 0.5) : totalGross;
+  const amountToPay = order.payment_method === 'vorkasse' ? totalGross : prepaymentAmount;
+
+  // QR code only for vorkasse (full amount) and rechnung (50% prepayment)
+  const showQrCode = order.payment_method === 'vorkasse' || order.payment_method === 'rechnung';
+  const qrCodeUrl = showQrCode
+    ? generateEpcQrUrl(amountToPay, `RE ${order.order_no}`, COMPANY.iban, COMPANY.bic, COMPANY.payment_recipient)
     : null;
 
-  // Payment info based on method
-  const getPaymentInfo = () => {
-    switch (order.payment_method) {
-      case 'vorkasse':
-        return `
-          <div class="payment-info">
-            <div class="payment-info-title">Zahlungsinformationen</div>
-            <div class="payment-detail">
-              <span class="payment-detail-label">Empfänger</span>
-              <span class="payment-detail-value">${COMPANY.payment_recipient}</span>
-            </div>
-            <div class="payment-detail">
-              <span class="payment-detail-label">IBAN</span>
-              <span class="payment-detail-value">${COMPANY.iban}</span>
-            </div>
-            <div class="payment-detail">
-              <span class="payment-detail-label">BIC</span>
-              <span class="payment-detail-value">${COMPANY.bic}</span>
-            </div>
-            <div class="payment-detail">
-              <span class="payment-detail-label">Bank</span>
-              <span class="payment-detail-value">${COMPANY.bank_name}</span>
-            </div>
-            <div class="payment-detail">
-              <span class="payment-detail-label">Verwendungszweck</span>
-              <span class="payment-detail-value highlight">${order.order_no}</span>
-            </div>
-            ${qrCodeUrl ? `
-            <div class="qr-code-section">
-              <img src="${qrCodeUrl}" alt="EPC QR Code" />
-              <div class="qr-code-label">QR-Code scannen<br>für schnelle Überweisung</div>
-            </div>
-            ` : ''}
-          </div>
-        `;
-      case 'lastschrift':
-        return `
-          <div class="payment-info">
-            <div class="payment-info-title">Zahlungsinformationen</div>
-            <p class="payment-note">Der Betrag wird per SEPA-Lastschrift von Ihrem Konto eingezogen.</p>
-          </div>
-        `;
-      case 'paypal':
-        return `
-          <div class="payment-info">
-            <div class="payment-info-title">Zahlungsinformationen</div>
-            <p class="payment-note">Zahlung erfolgt über PayPal.</p>
-          </div>
-        `;
-      case 'klarna':
-        return `
-          <div class="payment-info">
-            <div class="payment-info-title">Zahlungsinformationen</div>
-            <p class="payment-note">Zahlung erfolgt über Klarna. Details finden Sie in Ihrer Klarna-App.</p>
-          </div>
-        `;
-      default:
-        return '';
+  // Show bank details for: vorkasse, rechnung, lastschrift (no QR for lastschrift)
+  const showBankDetails = ['vorkasse', 'rechnung', 'lastschrift'].includes(order.payment_method);
+
+  const getBankDetailsHtml = (showQr = false, amountLabel = 'Betrag', amount = totalGross) => `
+    <div class="${showQr ? 'bank-with-qr' : ''}">
+      <table class="bank-details">
+        <tr><td class="label">Empfänger:</td><td>${COMPANY.payment_recipient}</td></tr>
+        <tr><td class="label">IBAN:</td><td class="mono">${COMPANY.iban}</td></tr>
+        <tr><td class="label">BIC:</td><td class="mono">${COMPANY.bic}</td></tr>
+        <tr><td class="label">Verwendungszweck:</td><td class="ref">${order.order_no}</td></tr>
+        <tr><td class="label">${amountLabel}:</td><td class="ref">${formatCurrency(amount, order.country)}</td></tr>
+      </table>
+      ${showQr && qrCodeUrl ? `
+      <div class="qr-inline">
+        <img src="${qrCodeUrl}" alt="QR" />
+        <span class="qr-label">GiroCode</span>
+        <span class="qr-hint">Scannen Sie den Code<br>in Ihrer Banking-App</span>
+      </div>
+      ` : ''}
+    </div>
+  `;
+
+  const getPaymentSection = () => {
+    // Rechnung (50% prepayment for new customers)
+    if (order.payment_method === 'rechnung') {
+      return `
+        <p class="payment-note" style="margin-bottom: 10px;">
+          <strong>Anzahlung (50%):</strong> ${formatCurrency(prepaymentAmount, order.country)}<br>
+          <strong>Restbetrag:</strong> ${formatCurrency(totalGross - prepaymentAmount, order.country)} — zahlbar innerhalb von 14 Tagen nach Lieferung.
+        </p>
+        ${getBankDetailsHtml(true, 'Anzahlung', prepaymentAmount)}
+      `;
     }
+
+    // Vorkasse - full amount with QR
+    if (order.payment_method === 'vorkasse') {
+      return getBankDetailsHtml(true);
+    }
+
+    // All other methods (PayPal, Klarna, Lastschrift) - just bank details, no QR
+    return getBankDetailsHtml(false);
   };
 
-  // Legal notes based on country and B2B status
   const getLegalNotes = () => {
     if (isReverseCharge) {
       return `
-        <div class="legal-notes reverse-charge">
-          <p><strong>Hinweis zur Steuerschuldumkehr (Reverse Charge):</strong></p>
-          <p>Steuerschuldnerschaft des Leistungsempfängers gemäß Art. 196 MwStSystRL.</p>
-          <p>Die Umsatzsteuer ist vom Leistungsempfänger zu entrichten.</p>
-          <div class="vat-ids">
-            <p><strong>UID-Nr. Leistungsempfänger:</strong> ${order.vat_id || '—'}</p>
-            <p><strong>UID-Nr. Leistungserbringer:</strong> ${COMPANY.vat_id}</p>
-          </div>
-        </div>
-      `;
-    } else if (order.country === 'AT') {
-      return `
-        <div class="legal-notes">
-          <p>Leistungszeitraum entspricht dem Lieferdatum. Rechnungsbetrag enthält 20% USt.</p>
-        </div>
-      `;
-    } else {
-      return `
-        <div class="legal-notes">
-          <p>Leistungszeitraum entspricht dem Lieferdatum.</p>
-          <p>Auf Holzpellets wird der ermäßigte Steuersatz von 7% angewandt (§ 12 Abs. 2 Nr. 1 UStG i.V.m. Anlage 2 Nr. 48).</p>
-        </div>
+        <p><strong>Hinweis zur Steuerschuldumkehr:</strong> Steuerschuldnerschaft des Leistungsempfängers gemäß Art. 196 MwStSystRL. Die Umsatzsteuer ist vom Leistungsempfänger zu entrichten.</p>
+        <p>UID-Nr. Leistungsempfänger: ${order.vat_id || '—'} | UID-Nr. Leistungserbringer: ${COMPANY.vat_id}</p>
       `;
     }
+    if (order.country === 'AT') {
+      return `<p>Leistungszeitraum entspricht dem Lieferdatum. Rechnungsbetrag enthält 20% USt.</p>`;
+    }
+    return `<p>Leistungszeitraum entspricht dem Lieferdatum. Auf Holzpellets wird der ermäßigte Steuersatz von 7% angewandt (§ 12 Abs. 2 Nr. 1 UStG).</p>`;
   };
 
   return `
@@ -201,527 +156,426 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rechnung ${invoiceNo}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    @page { margin: 15mm 12mm; size: A4; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 10pt;
-      line-height: 1.5;
-      color: #1f2937;
-      background: #ffffff;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 9pt;
+      line-height: 1.4;
+      color: #1a1a1a;
+      background: #fff;
       max-width: 210mm;
       margin: 0 auto;
-      padding: 20mm 15mm;
-      -webkit-font-smoothing: antialiased;
     }
-
-    @media print {
-      body { padding: 0; margin: 0; }
-      .page-break { page-break-after: always; }
-    }
+    @media screen { body { padding: 10mm; } }
+    @media print { body { padding: 0; } }
 
     /* Header */
-    .invoice-header {
+    .header {
+      background: #1e3a3a;
+      color: #fff;
+      padding: 20px 24px;
+      margin: -10mm -10mm 0 -10mm;
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #f3f4f6;
+      align-items: center;
     }
-
-    .company-logo-section { flex: 1; }
-
-    .company-logo {
-      max-width: 160px;
-      height: auto;
-      margin-bottom: 16px;
+    @media print { .header { margin: 0; } }
+    .header-logo img {
+      height: 36px;
+      width: auto;
     }
-
-    .company-details {
-      font-size: 9pt;
-      color: #6b7280;
-      line-height: 1.6;
-    }
-
-    .company-details strong {
-      display: block;
-      font-size: 12pt;
-      font-weight: 600;
-      color: #2D5016;
-      margin-bottom: 6px;
-    }
-
-    /* Invoice Meta */
-    .invoice-meta {
+    .header-company {
       text-align: right;
-      background: #f9fafb;
-      padding: 20px;
-      border-radius: 8px;
-      border-left: 3px solid #2D5016;
-      min-width: 220px;
-    }
-
-    .invoice-meta h1 {
-      font-size: 22pt;
-      font-weight: 700;
-      color: #2D5016;
-      margin-bottom: 16px;
-      letter-spacing: -0.5px;
-    }
-
-    .invoice-meta-item {
-      display: flex;
-      justify-content: space-between;
-      margin: 6px 0;
-      font-size: 9pt;
-    }
-
-    .invoice-meta-label {
-      color: #6b7280;
-      font-weight: 500;
-    }
-
-    .invoice-meta-value {
-      color: #111827;
-      font-weight: 600;
-      margin-left: 16px;
-    }
-
-    /* Customer Address */
-    .customer-section {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 32px;
-      gap: 32px;
-    }
-
-    .customer-address {
-      flex: 1;
-      background: #f0fdf4;
-      padding: 20px;
-      border-radius: 8px;
-      border-left: 3px solid #2D5016;
-    }
-
-    .customer-address-label {
       font-size: 8pt;
-      color: #166534;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-weight: 600;
-      margin-bottom: 10px;
-    }
-
-    .customer-address p {
-      font-size: 10pt;
-      color: #111827;
-      margin: 3px 0;
+      opacity: 0.9;
       line-height: 1.5;
     }
-
-    .customer-name {
-      font-weight: 600;
-      font-size: 11pt;
-      color: #000;
+    .header-company strong {
+      font-size: 10pt;
+      display: block;
+      margin-bottom: 4px;
     }
 
-    .company-name {
-      font-weight: 700;
-      font-size: 11pt;
-      color: #2D5016;
+    /* Document Info */
+    .doc-info {
+      margin: 24px 0;
+      display: flex;
+      justify-content: space-between;
     }
-
-    .vat-id {
+    .doc-title {
+      font-size: 20pt;
+      font-weight: bold;
+      color: #1e3a3a;
+      letter-spacing: -0.5px;
+    }
+    .doc-meta {
+      text-align: right;
+    }
+    .doc-meta table {
       font-size: 9pt;
-      color: #166534;
-      margin-top: 8px;
+      border-collapse: collapse;
+    }
+    .doc-meta td {
+      padding: 2px 0;
+    }
+    .doc-meta .label {
+      color: #666;
+      padding-right: 16px;
+    }
+    .doc-meta .value {
+      font-weight: 600;
+      text-align: right;
+    }
+
+    /* Address Block */
+    .address-section {
+      margin: 20px 0 24px;
+      display: flex;
+      gap: 40px;
+    }
+    .address-block {
+      flex: 1;
+    }
+    .address-label {
+      font-size: 7pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+    .address-block p {
+      margin: 2px 0;
+    }
+    .address-block .name {
+      font-weight: 600;
+      font-size: 10pt;
+    }
+    .address-block .company {
+      font-weight: 700;
+      color: #1e3a3a;
+    }
+    .address-block .vat {
+      font-size: 8pt;
+      color: #666;
+      margin-top: 6px;
     }
 
     /* Greeting */
     .greeting {
-      margin-bottom: 24px;
-      font-size: 10pt;
-      color: #374151;
+      margin: 20px 0;
+      font-size: 9pt;
     }
 
     /* Items Table */
     .items-table {
       width: 100%;
       border-collapse: collapse;
-      margin: 24px 0;
-      background: #ffffff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      border-radius: 8px;
-      overflow: hidden;
+      margin: 16px 0;
+      font-size: 9pt;
     }
-
-    .items-table thead {
-      background: linear-gradient(135deg, #2D5016 0%, #4A7C23 100%);
-    }
-
     .items-table th {
-      padding: 12px 16px;
+      background: #1e3a3a;
+      color: #fff;
+      padding: 10px 12px;
       text-align: left;
       font-weight: 600;
-      font-size: 9pt;
-      color: #ffffff;
+      font-size: 8pt;
       text-transform: uppercase;
       letter-spacing: 0.3px;
     }
-
-    .items-table th.right { text-align: right; }
-    .items-table th.center { text-align: center; }
-
+    .items-table th.r { text-align: right; }
+    .items-table th.c { text-align: center; }
     .items-table td {
-      padding: 14px 16px;
-      font-size: 10pt;
-      color: #374151;
-      border-bottom: 1px solid #f3f4f6;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e5e5;
+      vertical-align: top;
     }
-
-    .items-table td.right { text-align: right; }
-    .items-table td.center { text-align: center; }
-
-    .items-table tbody tr:last-child td { border-bottom: none; }
-    .items-table tbody tr:hover { background: #f9fafb; }
-
-    .item-name { font-weight: 500; color: #111827; }
-    .item-sku { font-size: 8pt; color: #6b7280; margin-top: 2px; }
-
-    /* Summary Section */
-    .summary-section {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 32px;
-      gap: 32px;
+    .items-table td.r { text-align: right; }
+    .items-table td.c { text-align: center; }
+    .items-table .item-name { font-weight: 500; }
+    .items-table .item-sku { font-size: 8pt; color: #888; }
+    .items-table tfoot td {
+      padding: 8px 12px;
+      border-bottom: none;
+      background: #fafafa;
     }
-
-    /* Payment Info */
-    .payment-info {
-      flex: 1;
-      background: #f9fafb;
-      padding: 20px;
-      border-radius: 8px;
-      border: 1px solid #e5e7eb;
-    }
-
-    .payment-info-title {
-      font-weight: 600;
-      font-size: 11pt;
-      color: #111827;
-      margin-bottom: 16px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #2D5016;
-    }
-
-    .payment-detail {
-      display: flex;
-      justify-content: space-between;
-      margin: 8px 0;
+    .items-table .subtotal-row td {
       font-size: 9pt;
+      color: #555;
     }
-
-    .payment-detail-label {
-      color: #6b7280;
-      font-weight: 500;
+    .items-table .total-row td {
+      background: #f0f0f0;
+      color: #1a1a1a;
+      font-size: 11pt;
+      padding: 12px;
+      border-top: 2px solid #1e3a3a;
     }
-
-    .payment-detail-value {
-      color: #111827;
-      font-weight: 600;
-      font-family: 'Courier New', monospace;
-    }
-
-    .payment-detail-value.highlight {
-      color: #2D5016;
+    .items-table .total-row td strong {
       font-weight: 700;
     }
 
+    /* Payment Section */
+    .payment-section {
+      margin: 20px 0;
+      padding: 12px 16px;
+      background: #fafafa;
+      border: 1px dashed #bbb;
+    }
+    .payment-section h4 {
+      font-size: 9pt;
+      margin-bottom: 8px;
+      color: #1e3a3a;
+      font-weight: 600;
+    }
+    .bank-details {
+      font-size: 10pt;
+      border-collapse: collapse;
+    }
+    .bank-details td {
+      padding: 2px 0;
+      font-weight: 400;
+      color: #1a1a1a;
+    }
+    .bank-details .label {
+      color: #555;
+      width: 130px;
+      padding-right: 12px;
+    }
+    .bank-details .mono {
+      letter-spacing: 0.3px;
+    }
+    .bank-details .ref {
+      font-weight: 600;
+    }
     .payment-note {
       font-size: 9pt;
-      color: #374151;
-      line-height: 1.6;
-      margin-top: 12px;
+      color: #444;
     }
-
-    .qr-code-section {
+    .bank-with-qr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .qr-inline {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .qr-inline img {
+      width: 90px;
+      height: 90px;
+      border: 2px solid #1e3a3a;
+      padding: 4px;
+      background: #fff;
+    }
+    .qr-inline .qr-label {
+      font-size: 9pt;
+      font-weight: 700;
+      color: #1e3a3a;
+    }
+    .qr-inline .qr-hint {
+      font-size: 7pt;
+      color: #666;
       text-align: center;
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid #e5e7eb;
-    }
-
-    .qr-code-section img {
-      width: 140px;
-      height: 140px;
-      margin-bottom: 8px;
-    }
-
-    .qr-code-label {
-      font-size: 8pt;
-      color: #6b7280;
       line-height: 1.4;
     }
 
-    /* Totals */
-    .summary-table {
-      flex: 1;
-      max-width: 320px;
-    }
-
-    .summary-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 0;
-      font-size: 10pt;
-      border-bottom: 1px solid #f3f4f6;
-    }
-
-    .summary-label { color: #6b7280; font-weight: 500; }
-    .summary-value { color: #111827; font-weight: 600; min-width: 100px; text-align: right; }
-
-    .summary-total {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 3px solid #2D5016;
-      font-size: 13pt;
-    }
-
-    .summary-total .summary-label,
-    .summary-total .summary-value {
-      color: #2D5016;
-      font-weight: 700;
-    }
 
     /* Legal Notes */
     .legal-notes {
-      margin-top: 32px;
-      padding: 16px;
-      background: #f9fafb;
-      border-radius: 6px;
+      margin: 20px 0;
+      padding: 12px;
+      background: #f9f9f9;
+      border-left: 2px solid #ccc;
       font-size: 8pt;
-      color: #6b7280;
-      line-height: 1.6;
-    }
-
-    .legal-notes p { margin: 4px 0; }
-
-    .legal-notes.reverse-charge {
-      background: #fef3c7;
-      border-left: 3px solid #d97706;
-      color: #92400e;
-    }
-
-    .legal-notes.reverse-charge p { color: #78350f; }
-
-    .vat-ids {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #fcd34d;
-    }
-
-    /* Payment Terms */
-    .payment-terms {
-      margin-top: 24px;
-      padding: 16px;
-      background: #f0fdf4;
-      border-radius: 6px;
-      border-left: 3px solid #16a34a;
-    }
-
-    .payment-terms-title {
-      font-weight: 600;
-      font-size: 10pt;
-      color: #166534;
-      margin-bottom: 8px;
-    }
-
-    .payment-terms p {
-      color: #15803d;
-      font-size: 9pt;
+      color: #555;
       line-height: 1.5;
-      margin: 4px 0;
     }
+    .legal-notes.reverse-charge {
+      background: #fff8e6;
+      border-color: #e6a700;
+      color: #8a6500;
+    }
+
+    /* Terms */
+    .terms {
+      margin: 16px 0;
+      font-size: 8pt;
+      color: #666;
+    }
+
 
     /* Footer */
     .footer {
-      margin-top: 48px;
-      padding-top: 20px;
-      border-top: 2px solid #f3f4f6;
-      font-size: 8pt;
-      color: #9ca3af;
-      line-height: 1.8;
-    }
-
-    .footer-row {
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid #ddd;
+      font-size: 7pt;
+      color: #888;
       display: flex;
       justify-content: space-between;
-      margin: 4px 0;
+      flex-wrap: wrap;
+      gap: 8px;
     }
-
-    .footer strong { color: #6b7280; font-weight: 600; }
-
+    .footer-col { flex: 1; min-width: 150px; }
+    .footer-col strong { color: #666; }
     .footer-center {
+      width: 100%;
       text-align: center;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #f3f4f6;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #eee;
+      font-size: 7pt;
     }
   </style>
 </head>
 <body>
   <!-- Header -->
-  <div class="invoice-header">
-    <div class="company-logo-section">
-      <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" class="company-logo" onerror="this.style.display='none'" />
-      <div class="company-details">
-        <strong>${COMPANY.name}</strong>
-        ${COMPANY.legal_name}<br>
-        ${COMPANY.address.street}<br>
-        ${COMPANY.address.zip} ${COMPANY.address.city}<br>
-        Deutschland
-      </div>
+  <div class="header">
+    <div class="header-logo">
+      <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" onerror="this.outerHTML='<span style=font-size:16pt;font-weight:bold>PELLETOR</span>'" />
     </div>
-
-    <div class="invoice-meta">
-      <h1>RECHNUNG</h1>
-      <div class="invoice-meta-item">
-        <span class="invoice-meta-label">Rechnungs-Nr.</span>
-        <span class="invoice-meta-value">${invoiceNo}</span>
-      </div>
-      <div class="invoice-meta-item">
-        <span class="invoice-meta-label">Rechnungsdatum</span>
-        <span class="invoice-meta-value">${formatDateDE(generatedAt)}</span>
-      </div>
-      <div class="invoice-meta-item">
-        <span class="invoice-meta-label">Bestellnummer</span>
-        <span class="invoice-meta-value">${order.order_no}</span>
-      </div>
-      <div class="invoice-meta-item">
-        <span class="invoice-meta-label">Bestelldatum</span>
-        <span class="invoice-meta-value">${formatDateDE(new Date(order.created_at))}</span>
-      </div>
-      ${order.delivery_date ? `
-      <div class="invoice-meta-item">
-        <span class="invoice-meta-label">Lieferdatum</span>
-        <span class="invoice-meta-value">${formatDateDE(new Date(order.delivery_date))}</span>
-      </div>
-      ` : ''}
+    <div class="header-company">
+      <strong>${COMPANY.legal_name}</strong>
+      ${COMPANY.address.street} · ${COMPANY.address.zip} ${COMPANY.address.city}
     </div>
   </div>
 
-  <!-- Customer Address -->
-  <div class="customer-section">
-    <div class="customer-address">
-      <div class="customer-address-label">Rechnungsempfänger</div>
-      ${order.company_name ? `<p class="company-name">${order.company_name}</p>` : ''}
-      <p class="customer-name">${order.customer_name}</p>
+  <!-- Document Info -->
+  <div class="doc-info">
+    <div class="doc-title">RECHNUNG</div>
+    <div class="doc-meta">
+      <table>
+        <tr><td class="label">Rechnungsnummer:</td><td class="value">${invoiceNo}</td></tr>
+        <tr><td class="label">Rechnungsdatum:</td><td class="value">${formatDateDE(generatedAt)}</td></tr>
+        <tr><td class="label">Bestellnummer:</td><td class="value">${order.order_no}</td></tr>
+        <tr><td class="label">Zahlungsart:</td><td class="value">${paymentMethodLabel}</td></tr>
+        ${order.delivery_date ? `<tr><td class="label">Lieferdatum:</td><td class="value">${formatDateDE(new Date(order.delivery_date))}</td></tr>` : ''}
+      </table>
+    </div>
+  </div>
+
+  <!-- Address Section -->
+  <div class="address-section">
+    <div class="address-block">
+      <div class="address-label">Rechnungsadresse</div>
+      ${order.company_name ? `<p class="company">${order.company_name}</p>` : ''}
+      <p class="name">${order.customer_name}</p>
       <p>${order.delivery_address.street} ${order.delivery_address.house_no}</p>
       <p>${order.delivery_address.zip} ${order.delivery_address.city}</p>
       <p>${order.country === 'AT' ? 'Österreich' : 'Deutschland'}</p>
-      ${order.vat_id ? `<p class="vat-id">UID-Nr.: ${order.vat_id}</p>` : ''}
+      ${order.vat_id ? `<p class="vat">UID-Nr.: ${order.vat_id}</p>` : ''}
+    </div>
+    <div class="address-block">
+      <div class="address-label">Lieferadresse</div>
+      ${order.company_name ? `<p class="company">${order.company_name}</p>` : ''}
+      <p class="name">${order.customer_name}</p>
+      <p>${order.delivery_address.street} ${order.delivery_address.house_no}</p>
+      <p>${order.delivery_address.zip} ${order.delivery_address.city}</p>
+      <p>${order.country === 'AT' ? 'Österreich' : 'Deutschland'}</p>
     </div>
   </div>
 
   <!-- Greeting -->
   <div class="greeting">
     <p>${salutation},</p>
-    <p>vielen Dank für Ihre Bestellung. Hiermit berechnen wir Ihnen folgende Positionen:</p>
+    <p>vielen Dank für Ihre Bestellung. Wir berechnen Ihnen wie folgt:</p>
   </div>
 
   <!-- Items Table -->
   <table class="items-table">
     <thead>
       <tr>
-        <th style="width: 45%;">Beschreibung</th>
-        <th class="center" style="width: 15%;">Menge</th>
-        <th class="right" style="width: 20%;">Einzelpreis</th>
-        <th class="right" style="width: 20%;">Gesamtpreis</th>
+        <th style="width:8%">Pos.</th>
+        <th style="width:42%">Bezeichnung</th>
+        <th class="c" style="width:12%">Menge</th>
+        <th class="r" style="width:19%">Einzelpreis</th>
+        <th class="r" style="width:19%">Gesamtpreis</th>
       </tr>
     </thead>
     <tbody>
-      ${order.items.map(item => `
+      ${order.items.map((item, idx) => `
         <tr>
+          <td>${idx + 1}</td>
           <td>
             <div class="item-name">${item.name}</div>
-            <div class="item-sku">Art.-Nr.: ${item.sku}</div>
+            <div class="item-sku">Art.-Nr. ${item.sku}</div>
           </td>
-          <td class="center">${item.quantity} ${item.unit === 'palette' ? 'Pal.' : item.unit === 'kg' ? 'kg' : item.unit}</td>
-          <td class="right">${formatCurrency(item.unit_price_net, order.country)}</td>
-          <td class="right">${formatCurrency(item.line_total_net, order.country)}</td>
+          <td class="c">${item.quantity} ${item.unit === 'palette' ? 'Palette(n)' : item.unit}</td>
+          <td class="r">${formatCurrency(item.unit_price_net, order.country)}</td>
+          <td class="r">${formatCurrency(item.line_total_net, order.country)}</td>
         </tr>
       `).join('')}
     </tbody>
-  </table>
-
-  <!-- Summary Section -->
-  <div class="summary-section">
-    ${getPaymentInfo()}
-
-    <div class="summary-table">
-      <div class="summary-row">
-        <div class="summary-label">Zwischensumme (netto)</div>
-        <div class="summary-value">${formatCurrency(subtotalNet, order.country)}</div>
-      </div>
+    <tfoot>
+      <tr class="subtotal-row">
+        <td colspan="4" class="r">Nettobetrag</td>
+        <td class="r">${formatCurrency(subtotalNet, order.country)}</td>
+      </tr>
       ${order.totals.shipping_net > 0 ? `
-        <div class="summary-row">
-          <div class="summary-label">Versandkosten</div>
-          <div class="summary-value">${formatCurrency(order.totals.shipping_net, order.country)}</div>
-        </div>
+      <tr class="subtotal-row">
+        <td colspan="4" class="r">Versand</td>
+        <td class="r">${formatCurrency(order.totals.shipping_net, order.country)}</td>
+      </tr>
       ` : ''}
       ${isReverseCharge ? `
-        <div class="summary-row">
-          <div class="summary-label">${vatLabel}</div>
-          <div class="summary-value">0,00 €</div>
-        </div>
+      <tr class="subtotal-row">
+        <td colspan="4" class="r">${vatLabel}</td>
+        <td class="r">0,00 €</td>
+      </tr>
       ` : `
-        <div class="summary-row">
-          <div class="summary-label">zzgl. ${vatLabel} (${(vatRate * 100).toFixed(0)}%)</div>
-          <div class="summary-value">${formatCurrency(vatAmount, order.country)}</div>
-        </div>
+      <tr class="subtotal-row">
+        <td colspan="4" class="r">${vatLabel} ${(vatRate * 100).toFixed(0)}%</td>
+        <td class="r">${formatCurrency(vatAmount, order.country)}</td>
+      </tr>
       `}
-      <div class="summary-row summary-total">
-        <div class="summary-label">Gesamtbetrag</div>
-        <div class="summary-value">${formatCurrency(totalGross, order.country)}</div>
-      </div>
-    </div>
+      <tr class="total-row">
+        <td colspan="4" class="r"><strong>Gesamtbetrag</strong></td>
+        <td class="r"><strong>${formatCurrency(totalGross, order.country)}</strong></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- Payment Section -->
+  <div class="payment-section">
+    <h4>Zahlungsinformationen</h4>
+    ${getPaymentSection()}
   </div>
 
   <!-- Legal Notes -->
-  ${getLegalNotes()}
-
-  <!-- Payment Terms -->
-  <div class="payment-terms">
-    <div class="payment-terms-title">Zahlungsbedingungen</div>
-    <p>Der Rechnungsbetrag ist innerhalb von 14 Tagen nach Erhalt dieser Rechnung ohne Abzug zur Zahlung fällig.</p>
-    <p>Bitte verwenden Sie bei Ihrer Überweisung die Bestellnummer als Verwendungszweck.</p>
+  <div class="legal-notes${isReverseCharge ? ' reverse-charge' : ''}">
+    ${getLegalNotes()}
   </div>
+
+  <!-- Terms -->
+  <div class="terms">
+    <p>Zahlungsziel: 14 Tage nach Rechnungsdatum. Bitte geben Sie bei der Überweisung die Bestellnummer als Verwendungszweck an.</p>
+  </div>
+
 
   <!-- Footer -->
   <div class="footer">
-    <div class="footer-row">
-      <span><strong>${COMPANY.ceo_title}:</strong> ${COMPANY.ceo}</span>
-      <span><strong>Handelsregister:</strong> ${COMPANY.company_register}, ${COMPANY.register_court}</span>
+    <div class="footer-col">
+      <strong>${COMPANY.ceo_title}:</strong> ${COMPANY.ceo}<br>
+      <strong>USt-IdNr.:</strong> ${COMPANY.vat_id}
     </div>
-    <div class="footer-row">
-      <span><strong>USt-IdNr.:</strong> ${COMPANY.vat_id}</span>
-      <span><strong>Bank:</strong> ${COMPANY.bank_name}</span>
+    <div class="footer-col">
+      <strong>Handelsregister:</strong> ${COMPANY.company_register}<br>
+      <strong>Registergericht:</strong> ${COMPANY.register_court}
     </div>
-    <div class="footer-row">
-      <span><strong>Tel:</strong> ${COMPANY.phone}</span>
-      <span><strong>IBAN:</strong> ${COMPANY.iban}</span>
+    <div class="footer-col">
+      <strong>Bank:</strong> ${COMPANY.bank_name}<br>
+      <strong>IBAN:</strong> ${COMPANY.iban}
     </div>
     <div class="footer-center">
-      ${COMPANY.legal_name} · ${COMPANY.address.street} · ${COMPANY.address.zip} ${COMPANY.address.city} · Deutschland
+      ${COMPANY.legal_name} · ${COMPANY.address.street} · ${COMPANY.address.zip} ${COMPANY.address.city} · Tel: ${COMPANY.phone} · ${COMPANY.email}
     </div>
   </div>
 </body>
@@ -729,5 +583,4 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   `.trim();
 }
 
-// Export types for use in API routes
 export type { InvoiceData };

@@ -41,32 +41,32 @@ export function Header({ variant = 'customer', userName }: HeaderProps) {
               <NavLink href="/admin" current={pathname === '/admin'}>
                 Dashboard
               </NavLink>
-              <NavLink 
-                href="/admin/orders" 
+              <NavLink
+                href="/admin/orders"
                 current={pathname.startsWith('/admin/orders')}
               >
-                Orders
+                Bestellungen
               </NavLink>
             </>
           ) : (
             <>
-              <NavLink 
-                href="/account/orders" 
+              <NavLink
+                href="/account"
+                current={pathname === '/account'}
+              >
+                Übersicht
+              </NavLink>
+              <NavLink
+                href="/account/orders"
                 current={pathname.startsWith('/account/orders')}
               >
-                Orders
+                Bestellungen
               </NavLink>
-              <NavLink 
-                href="/account/addresses" 
-                current={pathname.startsWith('/account/addresses')}
-              >
-                Addresses
-              </NavLink>
-              <NavLink 
-                href="/account/settings" 
+              <NavLink
+                href="/account/settings"
                 current={pathname.startsWith('/account/settings')}
               >
-                Settings
+                Einstellungen
               </NavLink>
             </>
           )}
@@ -81,7 +81,7 @@ export function Header({ variant = 'customer', userName }: HeaderProps) {
             href={isAdmin ? '/admin/logout' : '/account/logout'}
             className="text-sm text-gray-600 hover:text-gray-900"
           >
-            Log out
+            Abmelden
           </Link>
         </div>
       </div>

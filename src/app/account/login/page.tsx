@@ -33,10 +33,10 @@ export default function CustomerLoginPage() {
       if (result.success) {
         router.push('/account');
       } else {
-        setError(result.error || 'Login failed');
+        setError(result.error || 'Anmeldung fehlgeschlagen');
       }
     } catch (err) {
-      setError('Connection error. Please try again.');
+      setError('Verbindungsfehler. Bitte versuchen Sie es erneut.');
     }
 
     setLoading(false);
@@ -126,16 +126,6 @@ export default function CustomerLoginPage() {
           </CardContent>
         </Card>
 
-        {/* Test credentials hint - only in dev */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-6 p-4 rounded-lg bg-[#2D5016]/10 border border-[#2D5016]/20">
-            <p className="text-[#2D5016] text-sm font-medium mb-2">Test-Zugangsdaten:</p>
-            <code className="block text-xs text-gray-600 font-mono">
-              E-Mail: kevin@mastermind.io<br />
-              Passwort: Kevin2025!
-            </code>
-          </div>
-        )}
       </div>
     </div>
   );

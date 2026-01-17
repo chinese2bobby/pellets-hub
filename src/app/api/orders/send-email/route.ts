@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { getOrderById, updateOrder, insertEvent, insertOutboxEntry, updateOutboxEntry } from '@/lib/memory-store';
+import { getOrderById, updateOrder, insertEvent, insertOutboxEntry, updateOutboxEntry } from '@/lib/db';
 import { EmailType, Order, OrderEvent, EmailOutbox, Salutation } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { COMPANY, COUNTRY_CONFIG } from '@/config';
@@ -411,7 +411,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const order = getOrderById(orderId);
+    const order = await getOrderById(orderId);
     if (!order) {
       return NextResponse.json(
         { success: false, error: 'Order not found' },
@@ -433,7 +433,7 @@ export async function POST(request: NextRequest) {
       status: 'pending',
       created_at: new Date().toISOString(),
     };
-    insertOutboxEntry(outbox);
+    await insertOutboxEntry(outbox);
 
     // Send email via Resend
     const { data, error } = await resend.emails.send({
@@ -445,7 +445,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      updateOutboxEntry(outboxId, { status: 'failed', error_message: error.message });
+      await updateOutboxEntry(outboxId, { status: 'failed', error_message: error.message });
       console.error(`Email failed (${templateType}) to ${order.email}:`, error);
       return NextResponse.json(
         { success: false, error: error.message },
@@ -454,12 +454,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Update outbox
-    updateOutboxEntry(outboxId, { status: 'sent', sent_at: new Date().toISOString() });
+    await updateOutboxEntry(outboxId, { status: 'sent', sent_at: new Date().toISOString() });
 
     // Update email flags on order
     const flagKey = getEmailFlagKey(templateType);
     if (flagKey) {
-      updateOrder(orderId, {
+      await updateOrder(orderId, {
         email_flags: {
           ...order.email_flags,
           [flagKey]: true,
@@ -482,7 +482,7 @@ export async function POST(request: NextRequest) {
       },
       created_at: new Date().toISOString(),
     };
-    insertEvent(event);
+    await insertEvent(event);
 
     console.log(`Email sent (${templateType}) to ${order.email}: ${data?.id}`);
 

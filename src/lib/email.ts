@@ -1,7 +1,7 @@
 // Resend Email Integration
 import { Resend } from 'resend';
 import { Order, EmailType } from '@/types';
-import { formatCurrency } from './utils';
+import { formatCurrency, getEpcQrCodeUrl } from './utils';
 import { COMPANY, COUNTRY_CONFIG } from '@/config';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -81,7 +81,7 @@ function formatDateDE(dateStr: string | undefined): string {
 // Helper: Get payment method label
 function getPaymentMethodLabel(method: string): string {
   const labels: Record<string, string> = {
-    'vorkasse': 'Vorkasse (Bankuberweisung)',
+    'vorkasse': 'Vorkasse (Banküberweisung)',
     'rechnung': 'Rechnung (50% Anzahlung)',
     'klarna': 'Klarna',
     'paypal': 'PayPal',
@@ -116,9 +116,9 @@ function getOrderInfoBlockHtml(order: Order): string {
     <!-- Full Order Information Block -->
     <div style="margin: 32px 0; border: 1px solid ${EMAIL_COLORS.border};">
 
-      <!-- Section: Bestellubersicht -->
+      <!-- Section: Bestellübersicht -->
       <div style="background: ${EMAIL_COLORS.backgroundLight}; padding: 16px 20px; border-bottom: 1px solid ${EMAIL_COLORS.border};">
-        <div style="font-weight: 600; color: ${EMAIL_COLORS.textPrimary}; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Bestellubersicht</div>
+        <div style="font-weight: 600; color: ${EMAIL_COLORS.textPrimary}; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Bestellübersicht</div>
       </div>
 
       <div style="padding: 20px;">
@@ -188,7 +188,7 @@ function getOrderInfoBlockHtml(order: Order): string {
           </table>
           ${order.totals.is_reverse_charge ? `
           <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid ${EMAIL_COLORS.border}; font-size: 11px; color: ${EMAIL_COLORS.textMuted};">
-            Steuerschuldnerschaft des Leistungsempfangers (Reverse Charge gem. Art. 196 MwStSystRL).
+            Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge gem. Art. 196 MwStSystRL).
             ${order.vat_id ? `<br>UID-Nr.: ${order.vat_id}` : ''}
           </div>
           ` : ''}
@@ -206,7 +206,7 @@ function getOrderInfoBlockHtml(order: Order): string {
           ${order.company_name ? `${order.company_name}<br>` : ''}
           ${order.delivery_address.street} ${order.delivery_address.house_no || ''}<br>
           ${order.delivery_address.zip} ${order.delivery_address.city}<br>
-          ${order.country === 'AT' ? 'Osterreich' : 'Deutschland'}
+          ${order.country === 'AT' ? 'Österreich' : 'Deutschland'}
         </div>
         ${order.delivery_date ? `
         <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid ${EMAIL_COLORS.border};">
@@ -281,14 +281,14 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
   const orderInfoBlock = getOrderInfoBlockHtml(order);
 
   return {
-    subject: `Eingangsbestatigung – Bestellung ${order.order_no}`,
+    subject: `Eingangsbestätigung – Bestellung ${order.order_no}`,
     html: `
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eingangsbestatigung ${order.order_no}</title>
+  <title>Eingangsbestätigung ${order.order_no}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: ${EMAIL_COLORS.backgroundMuted}; font-family: ${EMAIL_FONT_STACK};">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${EMAIL_COLORS.backgroundMuted};">
@@ -298,9 +298,17 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
 
           <!-- Header -->
           <tr>
-            <td style="background: ${EMAIL_COLORS.headerDark}; padding: 24px 40px;">
-              <div style="font-size: 20px; font-weight: 600; color: white;">${COMPANY.name}</div>
-              <div style="font-size: 13px; color: ${EMAIL_COLORS.accentLight}; margin-top: 4px;">Eingangsbestatigung</div>
+            <td style="background: ${EMAIL_COLORS.headerDark}; padding: 24px 30px; border-radius: 8px 8px 0 0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Eingangsbestätigung</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
@@ -310,23 +318,23 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
               <p style="margin: 0 0 20px; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">${salutation},</p>
 
               <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                vielen Dank fur Ihre Bestellung bei ${COMPANY.name}.
+                vielen Dank für Ihre Bestellung bei ${COMPANY.name}.
               </p>
 
               <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                Wir haben Ihre Bestellung erhalten und werden sie am nachsten Werktag bearbeiten.
-                Sie erhalten in Kurze eine ausfuhrliche Bestellbestatigung mit allen weiteren Informationen.
+                Wir haben Ihre Bestellung erhalten und werden sie am nächsten Werktag bearbeiten.
+                Sie erhalten in Kürze eine ausführliche Bestellbestätigung mit allen weiteren Informationen.
               </p>
 
               <!-- Full Order Info -->
               ${orderInfoBlock}
 
               <p style="margin: 24px 0 0; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                Bei Fragen stehen wir Ihnen selbstverstandlich jederzeit zur Verfugung.
+                Bei Fragen stehen wir Ihnen selbstverständlich jederzeit zur Verfügung.
               </p>
 
               <p style="margin: 24px 0 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary};">
-                Mit freundlichen Grußen<br>
+                Mit freundlichen Grüßen<br>
                 ${COMPANY.name}
               </p>
             </td>
@@ -364,16 +372,17 @@ function getPaymentBlockHtml(order: Order): string {
   const amountWith10PercentDiscount = totalGross - discount10Percent;
   const halfAmount = Math.round(totalGross / 2);
 
-  // QR Code placeholder - will be replaced with actual QR in customer portal
-  const qrCodePlaceholder = `
+  // Generate actual EPC QR code for banking apps
+  const getQrCodeHtml = (amountCents: number, reference: string) => {
+    const qrUrl = getEpcQrCodeUrl(amountCents, reference);
+    return `
     <div style="text-align: center; margin: 24px 0; padding: 20px; background: #fafafa; border: 1px solid #e5e5e5;">
-      <div style="width: 120px; height: 120px; margin: 0 auto; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
-        <span style="color: #999; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">QR-Code</span>
-      </div>
+      <img src="${qrUrl}" alt="EPC QR-Code für Banküberweisung" style="width: 160px; height: 160px; margin: 0 auto; display: block;" />
       <p style="margin: 12px 0 0; color: #666; font-size: 12px;">
-        Scannen Sie den QR-Code mit Ihrer Banking-App.
+        Scannen Sie den QR-Code in Ihrer Banking-App
       </p>
     </div>`;
+  };
 
   // Bank details table (formal style)
   const bankDetailsTable = `
@@ -424,7 +433,7 @@ function getPaymentBlockHtml(order: Order): string {
 
         ${bankDetailsTable}
 
-        ${qrCodePlaceholder}
+        ${getQrCodeHtml(totalGross, order.order_no)}
 
         <p style="margin: 20px 0; color: #374151; font-size: 14px; line-height: 1.7;">
           Für eine zügige Bearbeitung bitten wir Sie, die Überweisung innerhalb von 72 Stunden vorzunehmen.
@@ -432,7 +441,7 @@ function getPaymentBlockHtml(order: Order): string {
         </p>
 
         <div style="background: #f0fdf4; border-left: 4px solid #22c55e; padding: 16px 20px; margin: 20px 0;">
-          <p style="margin: 0 0 8px; font-weight: 600; color: #166534; font-size: 14px;">Hinweis: 2% Skonto bei Sofortüberweisung</p>
+          <p style="margin: 0 0 8px; font-weight: 600; color: #166534; font-size: 14px;">Hinweis: 2% Skonto bei schneller Zahlung</p>
           <p style="margin: 0; color: #15803d; font-size: 14px; line-height: 1.6;">
             Bei Zahlungseingang innerhalb von 3 Werktagen gewähren wir Ihnen 2% Skonto auf den Gesamtbetrag.
             In diesem Fall überweisen Sie bitte ${formatCurrency(amountWith2PercentDiscount, order.country)} anstelle von ${formatCurrency(totalGross, order.country)}.
@@ -464,6 +473,7 @@ function getPaymentBlockHtml(order: Order): string {
             Prüfmechanismen des Zahlungsdienstleisters zusammenhängen.
           </p>
           <p style="margin: 16px 0 0; color: #7f1d1d; font-size: 14px; line-height: 1.7;">
+            Um Ihre Bestellung nicht zu gefährden, bieten wir Ihnen eine sichere Alternative an.
             Wir bitten diese Unannehmlichkeit zu entschuldigen.
           </p>
         </div>
@@ -495,7 +505,7 @@ function getPaymentBlockHtml(order: Order): string {
 
         ${bankDetailsTable}
 
-        ${qrCodePlaceholder}
+        ${getQrCodeHtml(amountWith10PercentDiscount, order.order_no)}
 
         <p style="margin: 20px 0; color: #374151; font-size: 14px; line-height: 1.7;">
           Bitte überweisen Sie den Betrag von <strong>${formatCurrency(amountWith10PercentDiscount, order.country)}</strong> unter Angabe
@@ -523,13 +533,13 @@ function getPaymentBlockHtml(order: Order): string {
         <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; margin: 0 0 24px;">
           <p style="margin: 0 0 12px; font-weight: 600; color: #92400e; font-size: 14px;">Hinweis zur Zahlungsfreigabe</p>
           <p style="margin: 0; color: #78350f; font-size: 14px; line-height: 1.7;">
-            Im Rahmen der Zahlungsabwicklung wird bei Auswahl der Zahlungsart „Rechnung" eine automatisierte
-            Bonitätsprüfung durch unseren externen Zahlungsdienstleister durchgeführt. In diesem Fall konnte
-            die Zahlungsfreigabe nicht vollständig bestätigt werden.
+            Bei der Zahlungsart „Rechnung" führt unser Zahlungsdienstleister eine automatisierte Prüfung durch.
+            Leider konnte die Freigabe in diesem Fall nicht erteilt werden.
           </p>
           <p style="margin: 16px 0 0; color: #78350f; font-size: 14px; line-height: 1.7;">
-            <strong>Daher ist eine Anzahlung in Höhe von 50% des Gesamtbetrags erforderlich.</strong>
-            Der Restbetrag kann bei Lieferung oder unmittelbar nach der Zustellung beglichen werden.
+            <strong>Daher ist eine Anzahlung von 50% erforderlich.</strong>
+            Den Restbetrag zahlen Sie bequem bei Lieferung. Nach erfolgreicher Abwicklung steht Ihnen
+            die Zahlung auf Rechnung ohne Anzahlung zur Verfügung.
           </p>
         </div>
 
@@ -555,7 +565,7 @@ function getPaymentBlockHtml(order: Order): string {
 
         ${bankDetailsTable}
 
-        ${qrCodePlaceholder}
+        ${getQrCodeHtml(halfAmount, order.order_no)}
 
         <p style="margin: 20px 0; color: #374151; font-size: 14px; line-height: 1.7;">
           Bitte überweisen Sie die Anzahlung von <strong>${formatCurrency(halfAmount, order.country)}</strong> innerhalb von
@@ -588,14 +598,14 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
   const paymentBlockHtml = getPaymentBlockHtml(order);
 
   return {
-    subject: `Bestellbestatigung ${order.order_no} – ${COMPANY.name}`,
+    subject: `Bestellbestätigung ${order.order_no} – ${COMPANY.name}`,
     html: `
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bestellbestatigung ${order.order_no}</title>
+  <title>Bestellbestätigung ${order.order_no}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: ${EMAIL_COLORS.backgroundMuted}; font-family: ${EMAIL_FONT_STACK};">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${EMAIL_COLORS.backgroundMuted};">
@@ -605,17 +615,14 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
 
           <!-- Header -->
           <tr>
-            <td style="background: ${EMAIL_COLORS.headerDark}; padding: 24px 40px;">
+            <td style="background: ${EMAIL_COLORS.headerDark}; padding: 24px 30px; border-radius: 8px 8px 0 0;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="font-size: 20px; font-weight: 600; color: white;">${COMPANY.name}</div>
-                    <div style="font-size: 13px; color: ${EMAIL_COLORS.accentLight}; margin-top: 4px;">Bestellbestatigung</div>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
-                  <td align="right" style="vertical-align: top;">
-                    <div style="background: rgba(255,255,255,0.15); padding: 6px 12px;">
-                      <span style="color: white; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Bestatigt</span>
-                    </div>
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Bestellbestätigung</div>
                   </td>
                 </tr>
               </table>
@@ -628,8 +635,8 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
               <p style="margin: 0 0 20px; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">${salutation},</p>
 
               <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                vielen Dank fur Ihre Bestellung und Ihr Vertrauen in ${COMPANY.name}.
-                Wir haben Ihren Auftrag erhalten und werden ihn schnellstmoglich bearbeiten.
+                vielen Dank für Ihre Bestellung und Ihr Vertrauen in ${COMPANY.name}.
+                Wir haben Ihren Auftrag erhalten und werden ihn schnellstmöglich bearbeiten.
                 Ihre Bestellung wurde bereits an unsere Logistikabteilung weitergeleitet.
               </p>
 
@@ -641,21 +648,21 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
 
               <!-- Next Steps -->
               <div style="margin-top: 28px; padding: 20px; background: ${EMAIL_COLORS.backgroundLight}; border-left: 4px solid ${EMAIL_COLORS.accent};">
-                <div style="font-weight: 600; color: ${EMAIL_COLORS.textPrimary}; margin-bottom: 8px; font-size: 14px;">Nachste Schritte</div>
+                <div style="font-weight: 600; color: ${EMAIL_COLORS.textPrimary}; margin-bottom: 8px; font-size: 14px;">Nächste Schritte</div>
                 <div style="color: ${EMAIL_COLORS.textSecondary}; font-size: 14px; line-height: 1.6;">
-                  ${order.payment_method === 'vorkasse' ? 'Nach Zahlungseingang wird Ihre Bestellung fur den Versand vorbereitet.' :
-                    order.payment_method === 'rechnung' ? 'Nach Eingang der Anzahlung wird Ihre Bestellung fur den Versand vorbereitet.' :
-                    'Wir informieren Sie per E-Mail uber den Lieferstatus.'}
+                  ${order.payment_method === 'vorkasse' ? 'Nach Zahlungseingang wird Ihre Bestellung für den Versand vorbereitet.' :
+                    order.payment_method === 'rechnung' ? 'Nach Eingang der Anzahlung wird Ihre Bestellung für den Versand vorbereitet.' :
+                    'Wir informieren Sie per E-Mail über den Lieferstatus.'}
                   ${order.order_type === 'preorder' ? 'Bei Vorbestellungen kontaktieren wir Sie zur Terminabstimmung.' : ''}
                 </div>
               </div>
 
               <p style="margin: 24px 0 0; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                Bei Fragen stehen wir Ihnen selbstverstandlich jederzeit zur Verfugung.
+                Bei Fragen stehen wir Ihnen selbstverständlich jederzeit zur Verfügung.
               </p>
 
               <p style="margin: 24px 0 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary};">
-                Mit freundlichen Grußen<br>
+                Mit freundlichen Grüßen<br>
                 ${COMPANY.name}
               </p>
             </td>
@@ -704,9 +711,17 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
 
           <!-- Header -->
           <tr>
-            <td style="background: ${EMAIL_COLORS.headerDark}; padding: 24px 40px;">
-              <div style="font-size: 20px; font-weight: 600; color: white;">${COMPANY.name}</div>
-              <div style="font-size: 13px; color: ${EMAIL_COLORS.accentLight}; margin-top: 4px;">Zahlungsinformationen</div>
+            <td style="background: ${EMAIL_COLORS.headerDark}; padding: 24px 30px; border-radius: 8px 8px 0 0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Zahlungsinformationen</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
@@ -752,18 +767,18 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
                   </table>
                   <div style="margin-top: 16px; padding: 16px; background: ${EMAIL_COLORS.backgroundMuted}; border-left: 4px solid ${EMAIL_COLORS.textMuted};">
                     <p style="margin: 0; color: ${EMAIL_COLORS.textSecondary}; font-size: 13px; line-height: 1.6;">
-                      <strong>Wichtig:</strong> Bitte geben Sie unbedingt die Bestellnummer <strong>${order.order_no}</strong> als Verwendungszweck an, damit wir Ihre Zahlung korrekt zuordnen konnen.
+                      <strong>Wichtig:</strong> Bitte geben Sie unbedingt die Bestellnummer <strong>${order.order_no}</strong> als Verwendungszweck an, damit wir Ihre Zahlung korrekt zuordnen können.
                     </p>
                   </div>
                 </div>
               </div>
 
               <p style="margin: 0 0 20px; color: ${EMAIL_COLORS.textSecondary}; font-size: 14px; line-height: 1.7;">
-                Nach Zahlungseingang wird Ihre Bestellung umgehend fur den Versand vorbereitet.
+                Nach Zahlungseingang wird Ihre Bestellung umgehend für den Versand vorbereitet.
               </p>
 
               <p style="margin: 24px 0 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary};">
-                Mit freundlichen Grußen<br>
+                Mit freundlichen Grüßen<br>
                 ${COMPANY.name}
               </p>
             </td>
@@ -795,14 +810,14 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
   const orderInfoBlock = getOrderInfoBlockHtml(order);
 
   return {
-    subject: `Stornierungsbestatigung – Bestellung ${order.order_no}`,
+    subject: `Stornierungsbestätigung – Bestellung ${order.order_no}`,
     html: `
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stornierungsbestatigung ${order.order_no}</title>
+  <title>Stornierungsbestätigung ${order.order_no}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: ${EMAIL_COLORS.backgroundMuted}; font-family: ${EMAIL_FONT_STACK};">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${EMAIL_COLORS.backgroundMuted};">
@@ -812,9 +827,17 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
 
           <!-- Header -->
           <tr>
-            <td style="background: ${EMAIL_COLORS.headerDark}; padding: 24px 40px;">
-              <div style="font-size: 20px; font-weight: 600; color: white;">${COMPANY.name}</div>
-              <div style="font-size: 13px; color: ${EMAIL_COLORS.accentLight}; margin-top: 4px;">Stornierungsbestatigung</div>
+            <td style="background: ${EMAIL_COLORS.headerDark}; padding: 24px 30px; border-radius: 8px 8px 0 0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Stornierungsbestätigung</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
@@ -824,7 +847,7 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
               <p style="margin: 0 0 20px; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">${salutation},</p>
 
               <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                hiermit bestatigen wir die Stornierung Ihrer Bestellung.
+                hiermit bestätigen wir die Stornierung Ihrer Bestellung.
               </p>
 
               <!-- Full Order Info -->
@@ -833,17 +856,17 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
               <div style="background: ${EMAIL_COLORS.backgroundLight}; border-left: 4px solid ${EMAIL_COLORS.textMuted}; padding: 20px; margin: 24px 0;">
                 <p style="margin: 0; font-size: 14px; color: ${EMAIL_COLORS.textSecondary}; line-height: 1.7;">
                   Sollten Sie bereits eine Zahlung geleistet haben, wird der entsprechende Betrag
-                  innerhalb von 5–7 Werktagen auf Ihr Konto zuruckerstattet.
+                  innerhalb von 5–7 Werktagen auf Ihr Konto zurückerstattet.
                 </p>
               </div>
 
               <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                Sollten Sie Fragen zur Stornierung haben oder weitere Unterstutzung benotigen,
-                stehen wir Ihnen selbstverstandlich jederzeit zur Verfugung.
+                Sollten Sie Fragen zur Stornierung haben oder weitere Unterstützung benotigen,
+                stehen wir Ihnen selbstverständlich jederzeit zur Verfügung.
               </p>
 
               <p style="margin: 24px 0 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary};">
-                Mit freundlichen Grußen<br>
+                Mit freundlichen Grüßen<br>
                 ${COMPANY.name}
               </p>
             </td>
@@ -878,14 +901,14 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
     : null;
 
   return {
-    subject: `Versandbestatigung – Bestellung ${order.order_no}`,
+    subject: `Versandbestätigung – Bestellung ${order.order_no}`,
     html: `
 <!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Versandbestatigung ${order.order_no}</title>
+  <title>Versandbestätigung ${order.order_no}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: ${EMAIL_COLORS.backgroundMuted}; font-family: ${EMAIL_FONT_STACK};">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${EMAIL_COLORS.backgroundMuted};">
@@ -895,9 +918,17 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
 
           <!-- Header -->
           <tr>
-            <td style="background: ${EMAIL_COLORS.headerDark}; padding: 24px 40px;">
-              <div style="font-size: 20px; font-weight: 600; color: white;">${COMPANY.name}</div>
-              <div style="font-size: 13px; color: ${EMAIL_COLORS.accentLight}; margin-top: 4px;">Versandbestatigung</div>
+            <td style="background: ${EMAIL_COLORS.headerDark}; padding: 24px 30px; border-radius: 8px 8px 0 0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
+                  </td>
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Versandbestätigung</div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
@@ -907,7 +938,7 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
               <p style="margin: 0 0 20px; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">${salutation},</p>
 
               <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                wir freuen uns, Ihnen mitteilen zu konnen, dass Ihre Bestellung fur den Versand vorbereitet wurde und sich auf dem Weg zu Ihnen befindet.
+                wir freuen uns, Ihnen mitteilen zu können, dass Ihre Bestellung für den Versand vorbereitet wurde und sich auf dem Weg zu Ihnen befindet.
               </p>
 
               <!-- Delivery Status -->
@@ -915,7 +946,7 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
                 <div style="font-weight: 600; color: ${EMAIL_COLORS.textPrimary}; margin-bottom: 12px;">Lieferstatus</div>
                 ${deliveryDate
                   ? `<p style="margin: 0 0 8px; font-size: 14px; color: ${EMAIL_COLORS.textSecondary};"><strong>Voraussichtlicher Liefertermin:</strong> ${deliveryDate}</p>`
-                  : `<p style="margin: 0 0 8px; font-size: 14px; color: ${EMAIL_COLORS.textSecondary};">Die Lieferung erfolgt voraussichtlich innerhalb der nachsten 1–3 Werktage.</p>`
+                  : `<p style="margin: 0 0 8px; font-size: 14px; color: ${EMAIL_COLORS.textSecondary};">Die Lieferung erfolgt voraussichtlich innerhalb der nächsten 1–3 Werktage.</p>`
                 }
                 ${order.delivery_window ? `<p style="margin: 0; font-size: 14px; color: ${EMAIL_COLORS.textSecondary};"><strong>Zeitfenster:</strong> ${order.delivery_window}</p>` : ''}
               </div>
@@ -927,18 +958,18 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
               <div style="margin-top: 24px; padding: 16px 20px; background: ${EMAIL_COLORS.backgroundLight}; border-left: 4px solid ${EMAIL_COLORS.textMuted};">
                 <p style="margin: 0 0 8px; font-weight: 600; color: ${EMAIL_COLORS.textPrimary}; font-size: 14px;">Wichtige Hinweise zur Lieferung</p>
                 <ul style="margin: 0; padding-left: 20px; color: ${EMAIL_COLORS.textSecondary}; font-size: 13px; line-height: 1.6;">
-                  <li>Bitte stellen Sie sicher, dass der Lieferort am Liefertag zuganglich ist.</li>
-                  <li>Der LKW benotigt ausreichend Platz zum Rangieren (ca. 3 m Breite).</li>
-                  <li>Bei Silolieferung: Bitte prufen Sie, dass der Befullstutzen erreichbar ist.</li>
+                  <li>Bitte stellen Sie sicher, dass der Lieferort am Liefertag zugänglich ist.</li>
+                  <li>Der LKW benötigt ausreichend Platz zum Rangieren (ca. 3 m Breite).</li>
+                  <li>Bei Silolieferung: Bitte prüfen Sie, dass der Befüllstutzen erreichbar ist.</li>
                 </ul>
               </div>
 
               <p style="margin: 24px 0 0; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                Bei Fragen zur Lieferung stehen wir Ihnen selbstverstandlich jederzeit zur Verfugung.
+                Bei Fragen zur Lieferung stehen wir Ihnen selbstverständlich jederzeit zur Verfügung.
               </p>
 
               <p style="margin: 24px 0 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary};">
-                Mit freundlichen Grußen<br>
+                Mit freundlichen Grüßen<br>
                 ${COMPANY.name}
               </p>
             </td>
@@ -1059,6 +1090,8 @@ export async function processEmailOutbox(): Promise<{ processed: number; failed:
 
   return { processed, failed };
 }
+
+
 
 
 

@@ -11,13 +11,13 @@ envFile.split('\n').forEach(line => {
 });
 
 const resend = new Resend(env.RESEND_API_KEY);
-const TO_EMAIL = 'china_bobby@outlook.com';
+const TO_EMAIL = 'vielgluck2sie@proton.me';
 const FROM_EMAIL = env.RESEND_FROM_EMAIL || 'bestellung@pelletor.at';
 const FROM_NAME = 'Pelletor Test';
 
 // Fetch email HTML from preview endpoint
 async function fetchEmailHtml(type: string, order: string, payment?: string): Promise<string> {
-  const url = new URL('http://localhost:3001/api/email-preview');
+  const url = new URL('http://localhost:3000/api/email-preview');
   url.searchParams.set('type', type);
   url.searchParams.set('order', order);
   if (payment) url.searchParams.set('payment', payment);

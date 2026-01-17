@@ -73,8 +73,10 @@ export const COMPANY = {
   domain: 'pelletor.at',
   url: 'https://pelletor.at',
 
-  // Logo
-  logo_url: 'https://pelletor.at/assets/logo.png',
+  // Logo - use local URL in development, production URL otherwise
+  logo_url: process.env.NODE_ENV === 'development'
+    ? 'http://localhost:8080/assets/logopelletor.png'
+    : 'https://pelletor.at/assets/logopelletor.png',
 
   // Service areas
   service_countries: ['DE', 'AT'] as Country[],
@@ -186,13 +188,13 @@ export const PAYMENT_METHODS: Record<PaymentMethod, {
 export const STATUS_CONFIG = {
   // Labels for each status
   labels: {
-    received: 'Received',
-    confirmed: 'Confirmed',
-    planning_delivery: 'Planning',
-    shipped: 'Shipped',
-    in_transit: 'In Transit',
-    delivered: 'Delivered',
-    cancelled: 'Cancelled',
+    received: 'Eingegangen',
+    confirmed: 'Bestätigt',
+    planning_delivery: 'In Planung',
+    shipped: 'Versandt',
+    in_transit: 'Unterwegs',
+    delivered: 'Geliefert',
+    cancelled: 'Storniert',
   },
   
   // Status badge colors (Tailwind classes)

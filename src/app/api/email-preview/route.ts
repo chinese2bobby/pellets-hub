@@ -492,16 +492,14 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
 
           <!-- Header -->
           <tr>
-            <td style="border-bottom: 3px solid ${brandGreen}; padding-bottom: 20px;">
+            <td style="background-color: ${brandGreen}; padding: 24px 30px; border-radius: 8px 8px 0 0;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.3px;">
-                      ${COMPANY.name}
-                    </div>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
-                  <td align="right" style="vertical-align: bottom;">
-                    <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
                       Eingangsbestätigung
                     </div>
                   </td>
@@ -648,16 +646,14 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
 
           <!-- Header -->
           <tr>
-            <td style="border-bottom: 3px solid ${brandGreen}; padding-bottom: 20px;">
+            <td style="background-color: ${brandGreen}; padding: 24px 30px; border-radius: 8px 8px 0 0;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.3px;">
-                      ${COMPANY.name}
-                    </div>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
-                  <td align="right" style="vertical-align: bottom;">
-                    <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
                       Bestellbestätigung
                     </div>
                   </td>
@@ -841,16 +837,14 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
 
           <!-- Header -->
           <tr>
-            <td style="border-bottom: 3px solid ${brandGreen}; padding-bottom: 20px;">
+            <td style="background-color: ${brandGreen}; padding: 24px 30px; border-radius: 8px 8px 0 0;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.3px;">
-                      ${COMPANY.name}
-                    </div>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
-                  <td align="right" style="vertical-align: bottom;">
-                    <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
                       Zahlungsinformationen
                     </div>
                   </td>
@@ -1004,9 +998,7 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.3px;">
-                      ${COMPANY.name}
-                    </div>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 40px; width: auto; display: block;" />
                   </td>
                   <td align="right" style="vertical-align: bottom;">
                     <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
@@ -1125,16 +1117,14 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
 
           <!-- Header -->
           <tr>
-            <td style="border-bottom: 3px solid ${brandGreen}; padding-bottom: 20px;">
+            <td style="background-color: ${brandGreen}; padding: 24px 30px; border-radius: 8px 8px 0 0;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.3px;">
-                      ${COMPANY.name}
-                    </div>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
-                  <td align="right" style="vertical-align: bottom;">
-                    <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
                       Versandbestätigung
                     </div>
                   </td>
@@ -1275,16 +1265,14 @@ function getDeliveredEmail(order: Order): { subject: string; html: string } {
 
           <!-- Header -->
           <tr>
-            <td style="border-bottom: 3px solid ${brandGreen}; padding-bottom: 20px;">
+            <td style="background-color: ${brandGreen}; padding: 24px 30px; border-radius: 8px 8px 0 0;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.3px;">
-                      ${COMPANY.name}
-                    </div>
+                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
-                  <td align="right" style="vertical-align: bottom;">
-                    <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
+                  <td align="right" style="vertical-align: middle;">
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">
                       Lieferbestätigung
                     </div>
                   </td>

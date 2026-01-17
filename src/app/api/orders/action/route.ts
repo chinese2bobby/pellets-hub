@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getOrderById, 
-  updateOrder, 
-  insertEvent, 
+import {
+  getOrderById,
+  updateOrder,
+  insertEvent,
   insertOutboxEntry,
   updateOutboxEntry,
-} from '@/lib/memory-store';
+} from '@/lib/db';
 import { OrderEvent, EmailOutbox, OrderStatus } from '@/types';
 import { sendEmail } from '@/lib/email';
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const results: { orderId: string; success: boolean; error?: string }[] = [];
 
     for (const orderId of orderIds) {
-      const order = getOrderById(orderId);
+      const order = await getOrderById(orderId);
       
       if (!order) {
         results.push({ orderId, success: false, error: 'Order not found' });
@@ -53,16 +53,16 @@ export async function POST(request: NextRequest) {
               status: 'pending',
               created_at: new Date().toISOString(),
             };
-            insertOutboxEntry(outbox);
+            await insertOutboxEntry(outbox);
 
             // Send email immediately via Resend
             const helloResult = await sendEmail('weekend_hello', order);
-            
+
             if (helloResult.success) {
-              updateOutboxEntry(outboxId, { status: 'sent', sent_at: new Date().toISOString() });
-              
+              await updateOutboxEntry(outboxId, { status: 'sent', sent_at: new Date().toISOString() });
+
               // Update order email flags
-              updateOrder(orderId, {
+              await updateOrder(orderId, {
                 email_flags: {
                   ...order.email_flags,
                   weekend_hello_sent: true,
@@ -79,12 +79,12 @@ export async function POST(request: NextRequest) {
                 payload: { email_type: 'weekend_hello', message_id: helloResult.messageId },
                 created_at: new Date().toISOString(),
               };
-              insertEvent(helloEvent);
+              await insertEvent(helloEvent);
 
               results.push({ orderId, success: true });
               console.log(`✅ Hello email sent to ${order.email} for order ${order.order_no}`);
             } else {
-              updateOutboxEntry(outboxId, { status: 'failed', error_message: helloResult.error });
+              await updateOutboxEntry(outboxId, { status: 'failed', error_message: helloResult.error });
               results.push({ orderId, success: false, error: helloResult.error });
               console.log(`❌ Hello email failed for order ${order.order_no}: ${helloResult.error}`);
             }
@@ -108,16 +108,16 @@ export async function POST(request: NextRequest) {
               status: 'pending',
               created_at: new Date().toISOString(),
             };
-            insertOutboxEntry(confirmOutbox);
+            await insertOutboxEntry(confirmOutbox);
 
             // Send email immediately via Resend
             const confirmResult = await sendEmail('confirmation', order);
-            
+
             if (confirmResult.success) {
-              updateOutboxEntry(confirmOutboxId, { status: 'sent', sent_at: new Date().toISOString() });
-              
+              await updateOutboxEntry(confirmOutboxId, { status: 'sent', sent_at: new Date().toISOString() });
+
               // Update order email flags and status
-              updateOrder(orderId, {
+              await updateOrder(orderId, {
                 email_flags: {
                   ...order.email_flags,
                   confirmation_sent: true,
@@ -131,20 +131,20 @@ export async function POST(request: NextRequest) {
                 order_id: orderId,
                 actor_type: 'admin',
                 event_type: 'status_changed',
-                payload: { 
-                  from: order.status, 
+                payload: {
+                  from: order.status,
                   to: 'confirmed',
                   email_type: 'confirmation',
                   message_id: confirmResult.messageId,
                 },
                 created_at: new Date().toISOString(),
               };
-              insertEvent(confirmEvent);
+              await insertEvent(confirmEvent);
 
               results.push({ orderId, success: true });
               console.log(`✅ Confirmation email sent to ${order.email} for order ${order.order_no}`);
             } else {
-              updateOutboxEntry(confirmOutboxId, { status: 'failed', error_message: confirmResult.error });
+              await updateOutboxEntry(confirmOutboxId, { status: 'failed', error_message: confirmResult.error });
               results.push({ orderId, success: false, error: confirmResult.error });
               console.log(`❌ Confirmation email failed for order ${order.order_no}: ${confirmResult.error}`);
             }
@@ -168,19 +168,19 @@ export async function POST(request: NextRequest) {
               status: 'pending',
               created_at: new Date().toISOString(),
             };
-            insertOutboxEntry(cancelOutbox);
+            await insertOutboxEntry(cancelOutbox);
 
             // Send cancellation email via Resend
             const cancelResult = await sendEmail('cancelled', order);
-            
+
             if (cancelResult.success) {
-              updateOutboxEntry(cancelOutboxId, { status: 'sent', sent_at: new Date().toISOString() });
+              await updateOutboxEntry(cancelOutboxId, { status: 'sent', sent_at: new Date().toISOString() });
             } else {
-              updateOutboxEntry(cancelOutboxId, { status: 'failed', error_message: cancelResult.error });
+              await updateOutboxEntry(cancelOutboxId, { status: 'failed', error_message: cancelResult.error });
             }
 
             // Update order status regardless of email result
-            updateOrder(orderId, {
+            await updateOrder(orderId, {
               status: 'cancelled' as OrderStatus,
             });
 
@@ -190,14 +190,14 @@ export async function POST(request: NextRequest) {
               order_id: orderId,
               actor_type: 'admin',
               event_type: 'cancelled',
-              payload: { 
-                from: order.status, 
+              payload: {
+                from: order.status,
                 reason: 'Admin cancelled',
                 email_sent: cancelResult.success,
               },
               created_at: new Date().toISOString(),
             };
-            insertEvent(cancelEvent);
+            await insertEvent(cancelEvent);
 
             results.push({ orderId, success: true });
             console.log(`✅ Order ${order.order_no} cancelled${cancelResult.success ? ' (email sent)' : ' (email failed)'}`);

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -23,6 +24,8 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
   function updateField(field: string, value: string) {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -127,7 +130,10 @@ export default function RegisterPage() {
                   <Input
                     id="first_name"
                     value={formData.first_name}
-                    onChange={(e) => updateField('first_name', e.target.value)}
+                    onChange={(e) => updateField('first_name', e.target.value.replace(/[^a-zA-ZäöüÄÖÜßéèêëàâáíìîïóòôõúùûñçÿ\s-]/g, ''))}
+                    pattern="^[a-zA-ZäöüÄÖÜßéèêëàâáíìîïóòôõúùûñçÿ\s-]{2,}$"
+                    minLength={2}
+                    placeholder="Max"
                     required
                   />
                 </div>
@@ -138,7 +144,10 @@ export default function RegisterPage() {
                   <Input
                     id="last_name"
                     value={formData.last_name}
-                    onChange={(e) => updateField('last_name', e.target.value)}
+                    onChange={(e) => updateField('last_name', e.target.value.replace(/[^a-zA-ZäöüÄÖÜßéèêëàâáíìîïóòôõúùûñçÿ\s-]/g, ''))}
+                    pattern="^[a-zA-ZäöüÄÖÜßéèêëàâáíìîïóòôõúùûñçÿ\s-]{2,}$"
+                    minLength={2}
+                    placeholder="Mustermann"
                     required
                   />
                 </div>
@@ -153,8 +162,9 @@ export default function RegisterPage() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => updateField('email', e.target.value)}
-                  placeholder="ihre@email.de"
+                  onChange={(e) => updateField('email', e.target.value.toLowerCase())}
+                  placeholder="max.mustermann@email.de"
+                  pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
                   required
                   autoComplete="email"
                 />
@@ -169,8 +179,9 @@ export default function RegisterPage() {
                   id="phone"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => updateField('phone', e.target.value)}
-                  placeholder="+43 ..."
+                  onChange={(e) => updateField('phone', e.target.value.replace(/[^0-9+\s()-]/g, ''))}
+                  placeholder="+49 123 456789"
+                  pattern="^[+]?[0-9\s()-]{6,20}$"
                 />
               </div>
 
@@ -191,29 +202,52 @@ export default function RegisterPage() {
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                   Passwort *
                 </label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => updateField('password', e.target.value)}
-                  placeholder="Mindestens 8 Zeichen"
-                  required
-                  autoComplete="new-password"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => updateField('password', e.target.value)}
+                    placeholder="Mindestens 8 Zeichen"
+                    minLength={8}
+                    className="pr-10"
+                    required
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label htmlFor="passwordConfirm" className="block text-sm font-medium text-gray-700 mb-1">
                   Passwort bestätigen *
                 </label>
-                <Input
-                  id="passwordConfirm"
-                  type="password"
-                  value={formData.passwordConfirm}
-                  onChange={(e) => updateField('passwordConfirm', e.target.value)}
-                  required
-                  autoComplete="new-password"
-                />
+                <div className="relative">
+                  <Input
+                    id="passwordConfirm"
+                    type={showPasswordConfirm ? 'text' : 'password'}
+                    value={formData.passwordConfirm}
+                    onChange={(e) => updateField('passwordConfirm', e.target.value)}
+                    placeholder="Passwort wiederholen"
+                    minLength={8}
+                    className="pr-10"
+                    required
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPasswordConfirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
               <p className="text-xs text-gray-500">

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOrderByOrderNo, getEventsByOrderId } from '@/lib/memory-store';
+import { getOrderByOrderNo, getEventsByOrderId } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
@@ -7,9 +7,9 @@ export async function GET(
 ) {
   try {
     const { orderNo } = await params;
-    
-    const order = getOrderByOrderNo(orderNo);
-    
+
+    const order = await getOrderByOrderNo(orderNo);
+
     if (!order) {
       return NextResponse.json(
         { success: false, error: 'Order not found' },
@@ -17,7 +17,7 @@ export async function GET(
       );
     }
 
-    const events = getEventsByOrderId(order.id);
+    const events = await getEventsByOrderId(order.id);
 
     return NextResponse.json({
       success: true,

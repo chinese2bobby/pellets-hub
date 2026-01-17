@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  Country, 
-  OrderType, 
-  PaymentMethod, 
+import {
+  Country,
+  OrderType,
+  PaymentMethod,
   OrderStatus,
   PaymentStatus,
   TotalsSnapshot,
@@ -13,12 +13,85 @@ import {
   EmailOutbox
 } from '@/types';
 import { COUNTRY_CONFIG } from '@/config';
-import { 
-  insertOrder, 
-  insertEvent, 
-  insertOutboxEntry, 
-  getNextOrderSeq 
-} from '@/lib/memory-store';
+import {
+  insertOrder,
+  insertEvent,
+  insertOutboxEntry,
+} from '@/lib/db';
+import { createAdminSupabaseClient } from '@/lib/supabase/server';
+
+// Hash password for user creation
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// Create user account during checkout
+async function createUserAccount(
+  email: string,
+  password: string,
+  firstName: string,
+  lastName: string,
+  phone?: string,
+  companyName?: string,
+  country?: Country
+): Promise<string | null> {
+  try {
+    const supabase = await createAdminSupabaseClient();
+
+    // Check if user already exists
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (existing) {
+      // User already exists, return their ID
+      return existing.id;
+    }
+
+    // Hash password and create user
+    const passwordHash = await hashPassword(password);
+
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .insert({
+        email: email.toLowerCase(),
+        password_hash: passwordHash,
+        role: 'customer',
+      })
+      .select()
+      .single();
+
+    if (userError) {
+      console.error('User creation error:', userError);
+      return null;
+    }
+
+    // Create profile
+    await supabase
+      .from('customer_profiles')
+      .insert({
+        user_id: user.id,
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone || null,
+        company_name: companyName || null,
+        default_country: country || 'DE',
+      });
+
+    console.log(`✅ User account created: ${email}`);
+    return user.id;
+  } catch (error) {
+    console.error('User creation error:', error);
+    return null;
+  }
+}
 
 // CORS headers for cross-origin requests from pellets-de-1
 const corsHeaders = {
@@ -49,7 +122,7 @@ const PRODUCTS = {
 
 // Preorder form input (from vorbestellung.html)
 interface PreorderFormData {
-  type: 'preorder';
+  type: 'preorder' | 'order';
   country: Country;
   product: 'eco' | 'premium' | 'silo';
   quantity?: number; // palettes
@@ -68,6 +141,7 @@ interface PreorderFormData {
   lastName: string;
   email: string;
   phone: string;
+  password?: string; // For account creation during checkout
   payment: PaymentMethod;
   acceptTerms: boolean;
   acceptDelivery: boolean;
@@ -98,6 +172,7 @@ interface OrderFormData {
   datenschutz: boolean;
   agb: boolean;
   newsletter?: boolean;
+  password?: string; // For account creation during checkout
 }
 
 type FormData = PreorderFormData | OrderFormData;
@@ -316,11 +391,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const formData = body as FormData;
-    
-    // Get next order sequence number
-    const seq = getNextOrderSeq();
-    const orderNo = formatOrderNo(seq);
-    
+
     // Determine order type and parse data
     const isPreorder = 'type' in formData && formData.type === 'preorder' || 'month' in formData;
     const orderType: OrderType = isPreorder ? 'preorder' : 'normal';
@@ -337,6 +408,9 @@ export async function POST(request: NextRequest) {
     let vatId: string | undefined;
     let paymentMethod: PaymentMethod;
     let salutation: 'herr' | 'frau' | 'firma' | 'divers' | undefined;
+    let password: string | undefined;
+    let firstName: string | undefined;
+    let lastName: string | undefined;
 
     if (isPreorder) {
       const preorderData = formData as PreorderFormData;
@@ -353,6 +427,9 @@ export async function POST(request: NextRequest) {
       vatId = preorderData.vatId;
       paymentMethod = preorderData.payment || 'vorkasse';
       salutation = preorderData.salutation as typeof salutation;
+      password = preorderData.password;
+      firstName = preorderData.firstName;
+      lastName = preorderData.lastName;
     } else {
       const orderData = formData as OrderFormData;
       const parsed = parseOrder(orderData);
@@ -368,6 +445,9 @@ export async function POST(request: NextRequest) {
       vatId = orderData.ustIdNr;
       paymentMethod = orderData.zahlungsart;
       salutation = orderData.anrede as typeof salutation;
+      password = orderData.password;
+      firstName = orderData.vorname;
+      lastName = orderData.nachname;
     }
 
     // Generate order ID
@@ -388,11 +468,11 @@ export async function POST(request: NextRequest) {
     // Check if weekend order
     const needsWeekendHello = isWeekendOrder();
     
-    // Create the order object
-    const order: Order = {
+    // Create the order object (order_seq and order_no will be set by Supabase)
+    const orderData: Omit<Order, 'order_seq' | 'order_no'> & { order_seq?: number; order_no?: string } = {
       id: orderId,
-      order_seq: seq,
-      order_no: orderNo,
+      order_seq: undefined, // Will be auto-generated by Supabase
+      order_no: undefined,  // Will be set from order_seq
       user_id: undefined,
       email,
       phone,
@@ -416,9 +496,10 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
     
-    // Insert order into memory store
-    insertOrder(order);
-    
+    // Insert order into database (returns order with order_seq and order_no from Supabase)
+    const order = await insertOrder(orderData as Order);
+    const orderNo = order.order_no!;
+
     // Insert order event
     const event: OrderEvent = {
       id: crypto.randomUUID(),
@@ -433,8 +514,8 @@ export async function POST(request: NextRequest) {
       },
       created_at: new Date().toISOString(),
     };
-    insertEvent(event);
-    
+    await insertEvent(event);
+
     // Create email outbox entry for confirmation
     const outboxEntry: EmailOutbox = {
       id: crypto.randomUUID(),
@@ -451,10 +532,24 @@ export async function POST(request: NextRequest) {
       status: 'pending',
       created_at: new Date().toISOString(),
     };
-    insertOutboxEntry(outboxEntry);
-    
+    await insertOutboxEntry(outboxEntry);
+
     console.log(`✅ Order created: ${orderNo} (${orderType}) for ${customerName}`);
-    
+
+    // Create user account if password was provided
+    let userId: string | null = null;
+    if (password && firstName && lastName) {
+      userId = await createUserAccount(
+        email,
+        password,
+        firstName,
+        lastName,
+        phone,
+        companyName,
+        country
+      );
+    }
+
     // Return success response
     return NextResponse.json({
       success: true,
