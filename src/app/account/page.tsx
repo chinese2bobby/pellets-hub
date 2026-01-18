@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthUser } from '@/lib/auth';
+import { Order } from '@/types';
 import { ProgressiveBackground } from '@/components/ui/progressive-background';
 
 const ORDERS_FOR_RECHNUNG = 3;

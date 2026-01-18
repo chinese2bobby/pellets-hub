@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { OrderCard } from '@/components/orders/order-card';
 import { Order } from '@/types';
+import { AuthUser } from '@/lib/auth';
 import { ProgressiveBackground } from '@/components/ui/progressive-background';
 
 const BG_FULL = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse.png";
