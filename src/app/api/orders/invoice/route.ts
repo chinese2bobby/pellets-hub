@@ -1,49 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOrderById, getOrderByOrderNo, updateOrder, insertEvent } from '@/lib/db';
+import { getOrderById, getOrderByOrderNo, getOrderByInvoiceToken, updateOrder, insertEvent } from '@/lib/db';
 import { generateInvoiceHTML, generateInvoiceNo } from '@/lib/invoice/generate-invoice';
 import { OrderEvent } from '@/types';
 import { getSession } from '@/lib/auth';
 import { checkRateLimit, getClientIP } from '@/lib/security';
 
-// GET /api/orders/invoice?orderId=xxx or ?orderNo=xxx
-// Returns invoice HTML or triggers PDF download
+// GET /api/orders/invoice?token=xxx (public) or ?orderId=xxx / ?orderNo=xxx (admin)
 export async function GET(request: NextRequest) {
   try {
-    // Admin auth check
-    const user = await getSession();
-    if (!user || user.role !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Rate limiting
-    const ip = getClientIP(request);
-    const rateCheck = checkRateLimit(`admin:invoice:${ip}`, { windowMs: 60000, maxRequests: 30 });
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Too many requests' },
-        { status: 429 }
-      );
-    }
-
     const { searchParams } = new URL(request.url);
+    const token = searchParams.get('token');
     const orderId = searchParams.get('orderId');
     const orderNo = searchParams.get('orderNo');
-    const format = searchParams.get('format') || 'html'; // 'html' or 'pdf'
+    const format = searchParams.get('format') || 'html';
 
-    if (!orderId && !orderNo) {
-      return NextResponse.json(
-        { success: false, error: 'orderId or orderNo is required' },
-        { status: 400 }
-      );
+    const ip = getClientIP(request);
+    let order;
+
+    if (token) {
+      const rateCheck = checkRateLimit(`invoice:token:${ip}`, { windowMs: 60000, maxRequests: 20 });
+      if (!rateCheck.allowed) {
+        return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
+      }
+      order = await getOrderByInvoiceToken(token);
+      if (!order) {
+        return NextResponse.json({ success: false, error: 'Invalid invoice link' }, { status: 404 });
+      }
+    } else {
+      const user = await getSession();
+      if (!user || user.role !== 'admin') {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+      const rateCheck = checkRateLimit(`admin:invoice:${ip}`, { windowMs: 60000, maxRequests: 30 });
+      if (!rateCheck.allowed) {
+        return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
+      }
+      if (!orderId && !orderNo) {
+        return NextResponse.json({ success: false, error: 'orderId or orderNo is required' }, { status: 400 });
+      }
+      order = orderId ? await getOrderById(orderId) : await getOrderByOrderNo(orderNo!);
     }
-
-    // Find order
-    const order = orderId
-      ? await getOrderById(orderId)
-      : await getOrderByOrderNo(orderNo!);
 
     if (!order) {
       return NextResponse.json(
