@@ -10,14 +10,14 @@ import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AuthUser } from '@/lib/auth';
 import { ProgressiveBackground } from '@/components/ui/progressive-background';
 
 const BG_FULL = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse.png";
 const BG_BLUR = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse-blur.png";
 
-export default function SettingsPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
+interface Address {
+  id: string;
   label: string;
   name: string;
   street: string;
@@ -270,10 +270,15 @@ export default function SettingsPage() {
   const displayName = profile.name || user.name;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FAFAF8] via-white to-[#f0f0e8]">
+    <div className="min-h-screen relative">
+      <ProgressiveBackground 
+        src={BG_FULL} 
+        blurSrc={BG_BLUR} 
+        overlayClassName="bg-[#FAFAF8]/90" 
+      />
       <Header variant="customer" userName={displayName} />
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className="container mx-auto px-4 py-8 max-w-4xl relative z-10">
         {/* Erfolgs-Banner */}
         {profileSuccess && (
           <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-200 text-green-700 flex items-center gap-3 animate-in slide-in-from-top duration-300">
