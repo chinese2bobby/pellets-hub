@@ -79,7 +79,7 @@ function getResetEmailHtml(code: string): string {
             <td style="background-color: #fafafa; padding: 24px 40px; border-top: 1px solid #e5e5e5;">
               <p style="margin: 0; color: #888888; font-size: 12px; line-height: 1.5; text-align: center;">
                 Diese E-Mail wurde automatisch versendet.<br>
-                Bei Fragen erreichen Sie uns unter <a href="mailto:info@pelletor.de" style="color: #2D5016; text-decoration: none;">info@pelletor.de</a>
+                Bei Fragen erreichen Sie uns unter <a href="mailto:kundenservice@pelletor.at" style="color: #2D5016; text-decoration: none;">kundenservice@pelletor.at</a>
               </p>
               <p style="margin: 16px 0 0; color: #aaaaaa; font-size: 11px; text-align: center;">
                 © ${new Date().getFullYear()} Pelletor · Or Projekt GmbH

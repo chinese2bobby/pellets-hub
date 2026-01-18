@@ -47,7 +47,7 @@ export const COMPANY = {
 
   // Contact
   phone: '+49 461 9041 2830',
-  email: 'info@pelletor.at',
+  email: 'kundenservice@pelletor.at',
   support_email: 'service@pelletor.at',
   order_email: 'bestellung@pelletor.at',
 

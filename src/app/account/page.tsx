@@ -343,7 +343,7 @@ export default function AccountDashboard() {
                 Unser Kundenservice hilft Ihnen gerne weiter.
               </p>
             </div>
-            <a href="mailto:info@pelletor.de">
+            <a href="mailto:kundenservice@pelletor.at">
               <Button variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
                 Kontakt
               </Button>
