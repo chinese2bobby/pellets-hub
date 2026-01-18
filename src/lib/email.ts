@@ -94,7 +94,7 @@ function formatDateDE(dateStr: string | undefined): string {
 function getPaymentMethodLabel(method: string): string {
   const labels: Record<string, string> = {
     'vorkasse': 'Vorkasse (Banküberweisung)',
-    'rechnung': 'Rechnung (50% Anzahlung)',
+    'rechnung': 'Rechnung',
     'klarna': 'Klarna',
     'paypal': 'PayPal',
     'lastschrift': 'SEPA-Lastschrift',
