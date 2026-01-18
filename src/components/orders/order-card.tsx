@@ -31,7 +31,7 @@ export function OrderCard({
   const isAdmin = variant === 'admin';
   const detailUrl = isAdmin
     ? `/admin/orders/${order.order_no}`
-    : `/account/orders/${order.order_no}`;
+    : `/account/orders/view/${order.order_token}`;
 
   const paymentLabel = PAYMENT_METHODS[order.payment_method]?.label || order.payment_method;
 
@@ -178,8 +178,9 @@ export function OrderCard({
                     Details anzeigen
                   </Button>
                 </Link>
+{order.invoice_url && (
                 <a
-                  href={`/api/orders/invoice?orderNo=${order.order_no}`}
+                  href={order.invoice_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 min-w-[150px]"
@@ -189,6 +190,7 @@ export function OrderCard({
                     Rechnung herunterladen
                   </Button>
                 </a>
+                )}
 
                 {isCancelled && (
                   <Button variant="default" size="sm" className="flex-1 min-w-[150px] bg-[#FFB3C7] hover:bg-[#FF9AB3] text-black">
@@ -354,8 +356,9 @@ export function OrderCard({
                 </Button>
               </Link>
 
+{order.invoice_url && (
               <a
-                href={`/api/orders/invoice?orderNo=${order.order_no}`}
+                href={order.invoice_url}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -364,6 +367,7 @@ export function OrderCard({
                   Rechnung
                 </Button>
               </a>
+              )}
 
               {/* Admin actions */}
               {onAction && !isCancelled && (

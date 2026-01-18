@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
 import { hashPassword } from '@/lib/auth';
-import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/security';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -29,7 +28,7 @@ function getResetEmailHtml(code: string): string {
           <!-- Header -->
           <tr>
             <td style="background-color: #2D5016; padding: 20px 40px; text-align: center;">
-              <img src="https://pelletor.de/assets/logopelletor.png" alt="Pelletor" style="height: 32px; width: auto;" />
+              <img src="https://pelletor.at/assets/logopelletor.png" alt="Pelletor" style="height: 32px; width: auto;" />
             </td>
           </tr>
 
@@ -89,19 +88,9 @@ function getResetEmailHtml(code: string): string {
 }
 
 // POST /api/auth/reset-password
-// Actions: request (send code), check (verify code only), verify (check code + reset password)
+// Actions: request (send code) or verify (check code + reset password)
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting
-    const ip = getClientIP(request);
-    const rateCheck = checkRateLimit(`reset-pwd:${ip}`, RATE_LIMITS.passwordReset);
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Zu viele Anfragen. Bitte warten Sie einige Minuten.' },
-        { status: 429 }
-      );
-    }
-
     const body = await request.json();
     const { action } = body;
 
@@ -161,7 +150,7 @@ export async function POST(request: NextRequest) {
       // Send email via Resend
       try {
         const { data: emailData, error: emailError } = await resend.emails.send({
-          from: `Pelletor <${process.env.RESEND_FROM_EMAIL || 'bestellung@pelletor.de'}>`,
+          from: `Pelletor <${process.env.RESEND_FROM_EMAIL || 'bestellung@pelletor.at'}>`,
           to: user.email,
           subject: 'Ihr Passwort-Reset-Code – Pelletor',
           html: getResetEmailHtml(code),
@@ -286,7 +275,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Hash new password with bcrypt and update user
+      // Hash new password and update user
       const passwordHash = await hashPassword(newPassword);
 
       const { error: updateError } = await supabase

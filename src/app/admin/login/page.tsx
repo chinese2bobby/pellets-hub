@@ -77,7 +77,7 @@ export default function AdminLoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@pelletor.de"
+                  placeholder="admin@pelletor.at"
                   autoComplete="email"
                   required
                 />
@@ -122,16 +122,7 @@ export default function AdminLoginPage() {
           </CardContent>
         </Card>
 
-        {/* Test credentials hint - only in dev */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-6 p-4 rounded-lg bg-black/20 backdrop-blur border border-white/10">
-            <p className="text-white/80 text-sm font-medium mb-2">Test-Zugangsdaten:</p>
-            <code className="block text-xs text-white/60 font-mono">
-              E-Mail: admin@pelletor.de<br />
-              Passwort: Mastermind2025!
-            </code>
-          </div>
-        )}
+
       </div>
     </div>
   );

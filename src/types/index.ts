@@ -75,15 +75,25 @@ export interface Address {
   house_no: string;
   zip: string;
   city: string;
-  // Austrian specific
   stiege?: string;
   tuer?: string;
   top?: string;
-  // Delivery notes
   access_notes?: string;
   is_default: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface DeliveryAddress {
+  country: Country;
+  street: string;
+  house_no: string;
+  zip: string;
+  city: string;
+  stiege?: string;
+  tuer?: string;
+  top?: string;
+  access_notes?: string;
 }
 
 // ============================================
@@ -177,7 +187,7 @@ export interface Order {
   totals: TotalsSnapshot;
   
   // Delivery
-  delivery_address: Address;
+  delivery_address: DeliveryAddress;
   delivery_date?: string;
   delivery_window?: string;     // e.g., "08:00-12:00"
   delivery_notes?: string;
@@ -185,6 +195,10 @@ export interface Order {
   // Invoice
   invoice_url?: string;
   invoice_generated_at?: string;
+  invoice_token?: string;
+  
+  // Access token for customer order view
+  order_token?: string;
   
   // Email tracking
   email_flags: EmailFlags;
@@ -258,6 +272,42 @@ export interface EmailOutbox {
   attempts?: number;
   created_at: string;
   sent_at?: string;
+}
+
+// ============================================
+// COMPANY SETTINGS
+// ============================================
+
+export interface CompanySettings {
+  name: string;
+  legal_name: string;
+  
+  address_street: string;
+  address_zip: string;
+  address_city: string;
+  address_country: Country;
+  
+  ceo: string;
+  ceo_title: string;
+  
+  phone: string;
+  email: string;
+  support_email: string;
+  order_email: string;
+  
+  iban: string;
+  bic: string;
+  bank_name: string;
+  payment_recipient: string;
+  
+  vat_id: string;
+  company_register: string;
+  register_court: string;
+  register_city: string;
+  
+  domain: string;
+  url: string;
+  logo_url: string;
 }
 
 // ============================================

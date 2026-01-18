@@ -9,7 +9,6 @@ import {
 import { OrderEvent, EmailOutbox, OrderStatus } from '@/types';
 import { sendEmail } from '@/lib/email';
 import { getSession } from '@/lib/auth';
-import { checkRateLimit, getClientIP } from '@/lib/security';
 
 interface ActionRequest {
   action: 'send_hello' | 'send_confirmation' | 'cancel';
@@ -18,22 +17,18 @@ interface ActionRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    // Admin auth check
     const user = await getSession();
-    if (!user || user.role !== 'admin') {
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { success: false, error: 'Not authenticated' },
         { status: 401 }
       );
     }
 
-    // Rate limiting for admin actions
-    const ip = getClientIP(request);
-    const rateCheck = checkRateLimit(`admin:action:${ip}`, { windowMs: 60000, maxRequests: 30 });
-    if (!rateCheck.allowed) {
+    if (user.role !== 'admin') {
       return NextResponse.json(
-        { success: false, error: 'Too many requests' },
-        { status: 429 }
+        { success: false, error: 'Admin access required' },
+        { status: 403 }
       );
     }
 
@@ -72,6 +67,7 @@ export async function POST(request: NextRequest) {
                 customer_name: order.customer_name,
               },
               status: 'pending',
+              attempts: 0,
               created_at: new Date().toISOString(),
             };
             await insertOutboxEntry(outbox);
@@ -127,6 +123,7 @@ export async function POST(request: NextRequest) {
                 totals: order.totals,
               },
               status: 'pending',
+              attempts: 0,
               created_at: new Date().toISOString(),
             };
             await insertOutboxEntry(confirmOutbox);
@@ -187,6 +184,7 @@ export async function POST(request: NextRequest) {
                 refund_method: 'klarna',
               },
               status: 'pending',
+              attempts: 0,
               created_at: new Date().toISOString(),
             };
             await insertOutboxEntry(cancelOutbox);

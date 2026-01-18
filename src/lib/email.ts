@@ -1,13 +1,25 @@
 // Resend Email Integration
 import { Resend } from 'resend';
-import { Order, EmailType } from '@/types';
+import { Order, EmailType, CompanySettings } from '@/types';
 import { formatCurrency, getEpcQrCodeUrl } from './utils';
-import { COMPANY, COUNTRY_CONFIG } from '@/config';
+import { COUNTRY_CONFIG } from '@/config';
+import { getCompanySettings } from './db';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'bestellung@pelletor.de';
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'bestellung@pelletor.at';
 const FROM_NAME = process.env.RESEND_FROM_NAME || 'Pelletor';
+
+const WAREHOUSE_HINWEIS = (settings: CompanySettings) => `
+<div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px 20px; margin: 20px 0;">
+  <p style="margin: 0 0 8px; font-weight: 600; color: #92400e; font-size: 14px;">📦 Hinweis zum Zahlungsempfänger</p>
+  <p style="margin: 0; color: #78350f; font-size: 13px; line-height: 1.6;">
+    Aufgrund des aktuell sehr hohen Bestellaufkommens wird Ihre Lieferung aus einem unserer externen Lager abgewickelt. 
+    Die Zahlung geht daher direkt auf das Konto unseres zweiten Lagerstandortes ein.<br><br>
+    Bitte beachten Sie, dass der Kontoinhaber in diesem Fall <strong>${settings.payment_recipient}</strong> lautet. 
+    Selbstverständlich bleibt Ihre Bestellung vollständig bei ${settings.legal_name} registriert und abgesichert.
+  </p>
+</div>`;
 
 export interface SendEmailResult {
   success: boolean;
@@ -276,7 +288,7 @@ function getOrderInfoBlockHtml(order: Order): string {
 // EMAIL TEMPLATES
 // ============================================
 
-function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
+function getWeekendHelloEmail(order: Order, s: CompanySettings): { subject: string; html: string } {
   const salutation = getSalutation(order);
   const orderInfoBlock = getOrderInfoBlockHtml(order);
 
@@ -302,7 +314,7 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
+                    <img src="${s.logo_url}" alt="${s.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
                   <td align="right" style="vertical-align: middle;">
                     <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Eingangsbestätigung</div>
@@ -318,7 +330,7 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
               <p style="margin: 0 0 20px; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">${salutation},</p>
 
               <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                vielen Dank für Ihre Bestellung bei ${COMPANY.name}.
+                vielen Dank für Ihre Bestellung bei ${s.name}.
               </p>
 
               <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
@@ -335,7 +347,7 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
 
               <p style="margin: 24px 0 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary};">
                 Mit freundlichen Grüßen<br>
-                ${COMPANY.name}
+                ${s.name}
               </p>
             </td>
           </tr>
@@ -344,9 +356,9 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
           <tr>
             <td style="background: ${EMAIL_COLORS.backgroundMuted}; padding: 24px 40px; text-align: center; border: 1px solid ${EMAIL_COLORS.border}; border-top: none;">
               <div style="color: ${EMAIL_COLORS.textMuted}; font-size: 12px; line-height: 1.8;">
-                ${COMPANY.legal_name}<br>
-                ${COMPANY.address.street}, ${COMPANY.address.zip} ${COMPANY.address.city}<br>
-                ${COMPANY.email} | ${COMPANY.phone}
+                ${s.legal_name}<br>
+                ${s.address_street}, ${s.address_zip} ${s.address_city}<br>
+                ${s.email} | ${s.phone}
               </div>
             </td>
           </tr>
@@ -361,20 +373,22 @@ function getWeekendHelloEmail(order: Order): { subject: string; html: string } {
   };
 }
 
-function getPaymentBlockHtml(order: Order): string {
+function getPaymentBlockHtml(order: Order, s: CompanySettings): string {
   const totalGross = order.totals.total_gross;
   const paymentMethod = order.payment_method;
 
-  // Calculate amounts
   const discount2Percent = Math.round(totalGross * 0.02);
   const discount10Percent = Math.round(totalGross * 0.10);
   const amountWith2PercentDiscount = totalGross - discount2Percent;
   const amountWith10PercentDiscount = totalGross - discount10Percent;
   const halfAmount = Math.round(totalGross / 2);
 
-  // Generate actual EPC QR code for banking apps
   const getQrCodeHtml = (amountCents: number, reference: string) => {
-    const qrUrl = getEpcQrCodeUrl(amountCents, reference);
+    const qrUrl = getEpcQrCodeUrl(amountCents, reference, {
+      iban: s.iban,
+      bic: s.bic,
+      payment_recipient: s.payment_recipient,
+    });
     return `
     <div style="text-align: center; margin: 24px 0; padding: 20px; background: #fafafa; border: 1px solid #e5e5e5;">
       <img src="${qrUrl}" alt="EPC QR-Code für Banküberweisung" style="width: 160px; height: 160px; margin: 0 auto; display: block;" />
@@ -384,24 +398,24 @@ function getPaymentBlockHtml(order: Order): string {
     </div>`;
   };
 
-  // Bank details table (formal style)
   const bankDetailsTable = `
+    ${WAREHOUSE_HINWEIS(s)}
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 16px 0; border-collapse: collapse;">
       <tr>
         <td style="padding: 10px 12px; border: 1px solid #e0e0e0; background: #fafafa; width: 160px; color: #555; font-size: 13px;">Kontoinhaber</td>
-        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; color: #333; font-size: 13px;">${COMPANY.payment_recipient}</td>
+        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; color: #333; font-size: 13px;">${s.payment_recipient}</td>
       </tr>
       <tr>
         <td style="padding: 10px 12px; border: 1px solid #e0e0e0; background: #fafafa; color: #555; font-size: 13px;">IBAN</td>
-        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; color: #333; font-size: 13px; font-family: 'Courier New', monospace;">${COMPANY.iban}</td>
+        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; color: #333; font-size: 13px; font-family: 'Courier New', monospace;">${s.iban}</td>
       </tr>
       <tr>
         <td style="padding: 10px 12px; border: 1px solid #e0e0e0; background: #fafafa; color: #555; font-size: 13px;">BIC</td>
-        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; color: #333; font-size: 13px; font-family: 'Courier New', monospace;">${COMPANY.bic}</td>
+        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; color: #333; font-size: 13px; font-family: 'Courier New', monospace;">${s.bic}</td>
       </tr>
       <tr>
         <td style="padding: 10px 12px; border: 1px solid #e0e0e0; background: #fafafa; color: #555; font-size: 13px;">Kreditinstitut</td>
-        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; color: #333; font-size: 13px;">${COMPANY.bank_name}</td>
+        <td style="padding: 10px 12px; border: 1px solid #e0e0e0; color: #333; font-size: 13px;">${s.bank_name}</td>
       </tr>
       <tr>
         <td style="padding: 10px 12px; border: 1px solid #e0e0e0; background: #fafafa; color: #555; font-size: 13px;">Verwendungszweck</td>
@@ -592,13 +606,13 @@ function getPaymentBlockHtml(order: Order): string {
   return '';
 }
 
-function getConfirmationEmail(order: Order): { subject: string; html: string } {
+function getConfirmationEmail(order: Order, s: CompanySettings): { subject: string; html: string } {
   const salutation = getSalutation(order);
   const orderInfoBlock = getOrderInfoBlockHtml(order);
-  const paymentBlockHtml = getPaymentBlockHtml(order);
+  const paymentBlockHtml = getPaymentBlockHtml(order, s);
 
   return {
-    subject: `Bestellbestätigung ${order.order_no} – ${COMPANY.name}`,
+    subject: `Bestellbestätigung ${order.order_no} – ${s.name}`,
     html: `
 <!DOCTYPE html>
 <html lang="de">
@@ -619,7 +633,7 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
+                    <img src="${s.logo_url}" alt="${s.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
                   <td align="right" style="vertical-align: middle;">
                     <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Bestellbestätigung</div>
@@ -635,7 +649,7 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
               <p style="margin: 0 0 20px; font-size: 15px; color: ${EMAIL_COLORS.textPrimary};">${salutation},</p>
 
               <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: ${EMAIL_COLORS.textSecondary};">
-                vielen Dank für Ihre Bestellung und Ihr Vertrauen in ${COMPANY.name}.
+                vielen Dank für Ihre Bestellung und Ihr Vertrauen in ${s.name}.
                 Wir haben Ihren Auftrag erhalten und werden ihn schnellstmöglich bearbeiten.
                 Ihre Bestellung wurde bereits an unsere Logistikabteilung weitergeleitet.
               </p>
@@ -663,7 +677,7 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
 
               <p style="margin: 24px 0 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary};">
                 Mit freundlichen Grüßen<br>
-                ${COMPANY.name}
+                ${s.name}
               </p>
             </td>
           </tr>
@@ -672,9 +686,9 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
           <tr>
             <td style="background: ${EMAIL_COLORS.backgroundMuted}; padding: 24px 40px; text-align: center; border: 1px solid ${EMAIL_COLORS.border}; border-top: none;">
               <div style="color: ${EMAIL_COLORS.textMuted}; font-size: 12px; line-height: 1.8;">
-                ${COMPANY.legal_name}<br>
-                ${COMPANY.address.street}, ${COMPANY.address.zip} ${COMPANY.address.city}<br>
-                ${COMPANY.email} | ${COMPANY.phone}
+                ${s.legal_name}<br>
+                ${s.address_street}, ${s.address_zip} ${s.address_city}<br>
+                ${s.email} | ${s.phone}
               </div>
             </td>
           </tr>
@@ -689,7 +703,7 @@ function getConfirmationEmail(order: Order): { subject: string; html: string } {
   };
 }
 
-function getPaymentInstructionsEmail(order: Order): { subject: string; html: string } {
+function getPaymentInstructionsEmail(order: Order, s: CompanySettings): { subject: string; html: string } {
   const salutation = getSalutation(order);
   const orderInfoBlock = getOrderInfoBlockHtml(order);
 
@@ -715,7 +729,7 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
+                    <img src="${s.logo_url}" alt="${s.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
                   <td align="right" style="vertical-align: middle;">
                     <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Zahlungsinformationen</div>
@@ -737,6 +751,9 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
               <!-- Full Order Info -->
               ${orderInfoBlock}
 
+              <!-- Warehouse Hinweis -->
+              ${WAREHOUSE_HINWEIS(s)}
+
               <!-- Bank Details -->
               <div style="margin: 32px 0; border: 1px solid ${EMAIL_COLORS.border};">
                 <div style="background: ${EMAIL_COLORS.backgroundLight}; padding: 16px 20px; border-bottom: 1px solid ${EMAIL_COLORS.border};">
@@ -746,19 +763,19 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
                     <tr>
                       <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; background: ${EMAIL_COLORS.backgroundLight}; width: 160px; color: ${EMAIL_COLORS.textSecondary}; font-size: 13px;">Kontoinhaber</td>
-                      <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; color: ${EMAIL_COLORS.textPrimary}; font-size: 13px;">${COMPANY.payment_recipient}</td>
+                      <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; color: ${EMAIL_COLORS.textPrimary}; font-size: 13px;">${s.payment_recipient}</td>
                     </tr>
                     <tr>
                       <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; background: ${EMAIL_COLORS.backgroundLight}; color: ${EMAIL_COLORS.textSecondary}; font-size: 13px;">IBAN</td>
-                      <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; color: ${EMAIL_COLORS.textPrimary}; font-size: 13px; font-family: 'Courier New', monospace;">${COMPANY.iban}</td>
+                      <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; color: ${EMAIL_COLORS.textPrimary}; font-size: 13px; font-family: 'Courier New', monospace;">${s.iban}</td>
                     </tr>
                     <tr>
                       <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; background: ${EMAIL_COLORS.backgroundLight}; color: ${EMAIL_COLORS.textSecondary}; font-size: 13px;">BIC</td>
-                      <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; color: ${EMAIL_COLORS.textPrimary}; font-size: 13px; font-family: 'Courier New', monospace;">${COMPANY.bic}</td>
+                      <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; color: ${EMAIL_COLORS.textPrimary}; font-size: 13px; font-family: 'Courier New', monospace;">${s.bic}</td>
                     </tr>
                     <tr>
                       <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; background: ${EMAIL_COLORS.backgroundLight}; color: ${EMAIL_COLORS.textSecondary}; font-size: 13px;">Kreditinstitut</td>
-                      <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; color: ${EMAIL_COLORS.textPrimary}; font-size: 13px;">${COMPANY.bank_name}</td>
+                      <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; color: ${EMAIL_COLORS.textPrimary}; font-size: 13px;">${s.bank_name}</td>
                     </tr>
                     <tr>
                       <td style="padding: 10px 12px; border: 1px solid ${EMAIL_COLORS.border}; background: ${EMAIL_COLORS.backgroundLight}; color: ${EMAIL_COLORS.textSecondary}; font-size: 13px;">Verwendungszweck</td>
@@ -779,7 +796,7 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
 
               <p style="margin: 24px 0 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary};">
                 Mit freundlichen Grüßen<br>
-                ${COMPANY.name}
+                ${s.name}
               </p>
             </td>
           </tr>
@@ -788,9 +805,9 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
           <tr>
             <td style="background: ${EMAIL_COLORS.backgroundMuted}; padding: 24px 40px; text-align: center; border: 1px solid ${EMAIL_COLORS.border}; border-top: none;">
               <div style="color: ${EMAIL_COLORS.textMuted}; font-size: 12px; line-height: 1.8;">
-                ${COMPANY.legal_name}<br>
-                ${COMPANY.address.street}, ${COMPANY.address.zip} ${COMPANY.address.city}<br>
-                ${COMPANY.email} | ${COMPANY.phone}
+                ${s.legal_name}<br>
+                ${s.address_street}, ${s.address_zip} ${s.address_city}<br>
+                ${s.email} | ${s.phone}
               </div>
             </td>
           </tr>
@@ -805,7 +822,7 @@ function getPaymentInstructionsEmail(order: Order): { subject: string; html: str
   };
 }
 
-function getCancelledEmail(order: Order): { subject: string; html: string } {
+function getCancelledEmail(order: Order, s: CompanySettings): { subject: string; html: string } {
   const salutation = getSalutation(order);
   const orderInfoBlock = getOrderInfoBlockHtml(order);
 
@@ -831,7 +848,7 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
+                    <img src="${s.logo_url}" alt="${s.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
                   <td align="right" style="vertical-align: middle;">
                     <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Stornierungsbestätigung</div>
@@ -867,7 +884,7 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
 
               <p style="margin: 24px 0 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary};">
                 Mit freundlichen Grüßen<br>
-                ${COMPANY.name}
+                ${s.name}
               </p>
             </td>
           </tr>
@@ -876,9 +893,9 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
           <tr>
             <td style="background: ${EMAIL_COLORS.backgroundMuted}; padding: 24px 40px; text-align: center; border: 1px solid ${EMAIL_COLORS.border}; border-top: none;">
               <div style="color: ${EMAIL_COLORS.textMuted}; font-size: 12px; line-height: 1.8;">
-                ${COMPANY.legal_name}<br>
-                ${COMPANY.address.street}, ${COMPANY.address.zip} ${COMPANY.address.city}<br>
-                ${COMPANY.email} | ${COMPANY.phone}
+                ${s.legal_name}<br>
+                ${s.address_street}, ${s.address_zip} ${s.address_city}<br>
+                ${s.email} | ${s.phone}
               </div>
             </td>
           </tr>
@@ -893,7 +910,7 @@ function getCancelledEmail(order: Order): { subject: string; html: string } {
   };
 }
 
-function getShippedEmail(order: Order): { subject: string; html: string } {
+function getShippedEmail(order: Order, s: CompanySettings): { subject: string; html: string } {
   const salutation = getSalutation(order);
   const orderInfoBlock = getOrderInfoBlockHtml(order);
   const deliveryDate = order.delivery_date
@@ -922,7 +939,7 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" style="height: 44px; width: auto; display: block;" />
+                    <img src="${s.logo_url}" alt="${s.name}" style="height: 44px; width: auto; display: block;" />
                   </td>
                   <td align="right" style="vertical-align: middle;">
                     <div style="font-size: 11px; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 1px; font-weight: 500;">Versandbestätigung</div>
@@ -970,7 +987,7 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
 
               <p style="margin: 24px 0 0; font-size: 14px; color: ${EMAIL_COLORS.textPrimary};">
                 Mit freundlichen Grüßen<br>
-                ${COMPANY.name}
+                ${s.name}
               </p>
             </td>
           </tr>
@@ -979,9 +996,9 @@ function getShippedEmail(order: Order): { subject: string; html: string } {
           <tr>
             <td style="background: ${EMAIL_COLORS.backgroundMuted}; padding: 24px 40px; text-align: center; border: 1px solid ${EMAIL_COLORS.border}; border-top: none;">
               <div style="color: ${EMAIL_COLORS.textMuted}; font-size: 12px; line-height: 1.8;">
-                ${COMPANY.legal_name}<br>
-                ${COMPANY.address.street}, ${COMPANY.address.zip} ${COMPANY.address.city}<br>
-                ${COMPANY.email} | ${COMPANY.phone}
+                ${s.legal_name}<br>
+                ${s.address_street}, ${s.address_zip} ${s.address_city}<br>
+                ${s.email} | ${s.phone}
               </div>
             </td>
           </tr>
@@ -1006,23 +1023,24 @@ export async function sendEmail(
   order: Order
 ): Promise<SendEmailResult> {
   try {
+    const settings = await getCompanySettings();
     let template: { subject: string; html: string };
 
     switch (emailType) {
       case 'weekend_hello':
-        template = getWeekendHelloEmail(order);
+        template = getWeekendHelloEmail(order, settings);
         break;
       case 'confirmation':
-        template = getConfirmationEmail(order);
+        template = getConfirmationEmail(order, settings);
         break;
       case 'payment_instructions':
-        template = getPaymentInstructionsEmail(order);
+        template = getPaymentInstructionsEmail(order, settings);
         break;
       case 'shipped':
-        template = getShippedEmail(order);
+        template = getShippedEmail(order, settings);
         break;
       case 'cancelled':
-        template = getCancelledEmail(order);
+        template = getCancelledEmail(order, settings);
         break;
       default:
         return { success: false, error: `Unknown email type: ${emailType}` };

@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession, hashPassword, verifyPassword } from '@/lib/auth';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
-import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/security';
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting
-    const ip = getClientIP(request);
-    const rateCheck = checkRateLimit(`change-pwd:${ip}`, RATE_LIMITS.passwordReset);
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Zu viele Anfragen. Bitte warten Sie.' },
-        { status: 429 }
-      );
-    }
-
     // Check if user is logged in
     const user = await getSession();
     if (!user) {
@@ -56,7 +45,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify current password (supports both bcrypt and legacy SHA-256)
     const isValid = await verifyPassword(currentPassword, dbUser.password_hash);
     if (!isValid) {
       return NextResponse.json(
@@ -65,7 +53,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update password with bcrypt
+    // Update password
     const newHash = await hashPassword(newPassword);
     const { error: updateError } = await supabase
       .from('users')

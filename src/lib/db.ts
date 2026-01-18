@@ -42,6 +42,8 @@ function mapRowToOrder(row: any): Order {
     delivery_notes: row.delivery_notes,
     invoice_url: row.invoice_url,
     invoice_generated_at: row.invoice_generated_at,
+    invoice_token: row.invoice_token,
+    order_token: row.order_token,
     email_flags: row.email_flags || {},
     needs_weekend_hello: row.needs_weekend_hello,
     next_status_at: row.next_status_at,
@@ -83,6 +85,7 @@ export async function insertOrder(order: Order): Promise<Order> {
       delivery_notes: order.delivery_notes,
       email_flags: order.email_flags,
       needs_weekend_hello: order.needs_weekend_hello,
+      order_token: order.order_token,
     })
     .select()
     .single();
@@ -151,6 +154,32 @@ export async function getOrderByOrderNo(orderNo: string): Promise<Order | undefi
     .from('orders')
     .select('*, order_items(*)')
     .eq('order_seq', seq)
+    .single();
+
+  if (error || !data) return undefined;
+  return mapRowToOrder(data);
+}
+
+export async function getOrderByInvoiceToken(token: string): Promise<Order | undefined> {
+  const supabase = await createAdminSupabaseClient();
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, order_items(*)')
+    .eq('invoice_token', token)
+    .single();
+
+  if (error || !data) return undefined;
+  return mapRowToOrder(data);
+}
+
+export async function getOrderByToken(token: string): Promise<Order | undefined> {
+  const supabase = await createAdminSupabaseClient();
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, order_items(*)')
+    .eq('order_token', token)
     .single();
 
   if (error || !data) return undefined;
@@ -326,4 +355,71 @@ export async function getMetrics() {
     normal: orderList.filter(o => o.order_type === 'normal').length,
     totalRevenue: orderList.reduce((sum, o) => sum + (o.totals?.total_gross || 0), 0),
   };
+}
+
+// ============================================
+// COMPANY SETTINGS
+// ============================================
+
+import { CompanySettings } from '@/types';
+import { COMPANY } from '@/config';
+
+const DEFAULT_SETTINGS: CompanySettings = {
+  name: COMPANY.name,
+  legal_name: COMPANY.legal_name,
+  address_street: COMPANY.address.street,
+  address_zip: COMPANY.address.zip,
+  address_city: COMPANY.address.city,
+  address_country: COMPANY.address.country,
+  ceo: COMPANY.ceo,
+  ceo_title: COMPANY.ceo_title,
+  phone: COMPANY.phone,
+  email: COMPANY.email,
+  support_email: COMPANY.support_email,
+  order_email: COMPANY.order_email,
+  iban: COMPANY.iban,
+  bic: COMPANY.bic,
+  bank_name: COMPANY.bank_name,
+  payment_recipient: COMPANY.payment_recipient,
+  vat_id: COMPANY.vat_id,
+  company_register: COMPANY.company_register,
+  register_court: COMPANY.register_court,
+  register_city: COMPANY.register_city,
+  domain: COMPANY.domain,
+  url: COMPANY.url,
+  logo_url: COMPANY.logo_url,
+};
+
+export async function getCompanySettings(): Promise<CompanySettings> {
+  const supabase = await createAdminSupabaseClient();
+
+  const { data, error } = await supabase
+    .from('company_settings')
+    .select('key, value');
+
+  if (error) throw error;
+
+  if (!data || data.length === 0) {
+    return DEFAULT_SETTINGS;
+  }
+
+  const settings = { ...DEFAULT_SETTINGS };
+  for (const row of data) {
+    if (row.key in settings) {
+      (settings as any)[row.key] = row.value;
+    }
+  }
+  return settings;
+}
+
+export async function updateCompanySettings(updates: Partial<CompanySettings>): Promise<void> {
+  const supabase = await createAdminSupabaseClient();
+
+  for (const [key, value] of Object.entries(updates)) {
+    const { error } = await supabase
+      .from('company_settings')
+      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    
+    if (error) throw error;
+  }
 }

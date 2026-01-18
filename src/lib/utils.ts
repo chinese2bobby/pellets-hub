@@ -4,7 +4,7 @@ import { format, formatDistanceToNow, isWeekend, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import QRCode from 'qrcode';
 import { Country, TotalsSnapshot } from '@/types';
-import { COUNTRY_CONFIG, EMAIL_CONFIG, COMPANY } from '@/config';
+import { COUNTRY_CONFIG, EMAIL_CONFIG } from '@/config';
 
 // ============================================
 // CLASSNAME UTILITY
@@ -299,32 +299,29 @@ export function formatAddressOneLine(address: {
 // EPC QR CODE GENERATION
 // ============================================
 
-/**
- * Generate EPC QR Code as data-uri (European Payments Council format)
- * Compatible with German/Austrian banking apps
- *
- * @param amountCents - Amount in cents
- * @param reference - Payment reference (e.g., order number)
- * @returns Promise<string> - data-uri of QR code image
- */
+interface BankingDetails {
+  iban: string;
+  bic: string;
+  payment_recipient: string;
+}
+
 export async function generateEpcQrCode(
   amountCents: number,
-  reference: string
+  reference: string,
+  bank: BankingDetails
 ): Promise<string> {
-  // EPC QR Code format (ISO 20022)
-  // https://www.europeanpaymentscouncil.eu/document-library/guidance-documents/quick-response-code-guidelines-enable-data-capture-initiation
   const epcData = [
-    'BCD',                           // Service Tag (fixed)
-    '002',                           // Version (002 = v2)
-    '1',                             // Character set (1 = UTF-8)
-    'SCT',                           // Identification (SEPA Credit Transfer)
-    COMPANY.bic,                     // BIC
-    COMPANY.payment_recipient,       // Beneficiary name (max 70 chars)
-    COMPANY.iban,                    // IBAN
-    `EUR${(amountCents / 100).toFixed(2)}`, // Amount
-    '',                              // Purpose (empty)
-    reference,                       // Remittance info (max 140 chars)
-    ''                               // Beneficiary info (empty)
+    'BCD',
+    '002',
+    '1',
+    'SCT',
+    bank.bic.replace(/\s/g, ''),
+    bank.payment_recipient.substring(0, 70),
+    bank.iban.replace(/\s/g, ''),
+    `EUR${(amountCents / 100).toFixed(2)}`,
+    '',
+    reference.substring(0, 140),
+    ''
   ].join('\n');
 
   try {
@@ -340,30 +337,26 @@ export async function generateEpcQrCode(
     return dataUri;
   } catch (error) {
     console.error('Failed to generate EPC QR code:', error);
-    // Return placeholder on error
     return '';
   }
 }
 
-/**
- * Sync version using external API (fallback)
- * Use generateEpcQrCode() for production
- */
 export function getEpcQrCodeUrl(
   amountCents: number,
-  reference: string
+  reference: string,
+  bank: BankingDetails
 ): string {
   const epcData = [
     'BCD',
     '002',
     '1',
     'SCT',
-    COMPANY.bic,
-    COMPANY.payment_recipient,
-    COMPANY.iban,
+    bank.bic.replace(/\s/g, ''),
+    bank.payment_recipient.substring(0, 70),
+    bank.iban.replace(/\s/g, ''),
     `EUR${(amountCents / 100).toFixed(2)}`,
     '',
-    reference,
+    reference.substring(0, 140),
     ''
   ].join('\n');
 

@@ -47,6 +47,12 @@ export function Header({ variant = 'customer', userName }: HeaderProps) {
               >
                 Bestellungen
               </NavLink>
+              <NavLink
+                href="/admin/settings"
+                current={pathname.startsWith('/admin/settings')}
+              >
+                Einstellungen
+              </NavLink>
             </>
           ) : (
             <>

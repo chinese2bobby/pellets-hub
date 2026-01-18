@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     const generatedAt = new Date();
 
     // Generate HTML
-    const html = generateInvoiceHTML({
+    const html = await generateInvoiceHTML({
       invoiceNo,
       order,
       generatedAt,
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     const generatedAt = new Date();
 
     // Generate HTML
-    const html = generateInvoiceHTML({
+    const html = await generateInvoiceHTML({
       invoiceNo,
       order,
       generatedAt,

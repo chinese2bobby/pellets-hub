@@ -1,31 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllOrders, getOrdersByType, getMetrics } from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/security';
 
 export async function GET(request: NextRequest) {
   try {
-    // Admin auth check
     const user = await getSession();
-    if (!user || user.role !== 'admin') {
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { success: false, error: 'Not authenticated' },
         { status: 401 }
       );
     }
 
-    // Rate limiting for admin endpoints
-    const ip = getClientIP(request);
-    const rateCheck = checkRateLimit(`admin:orders:${ip}`, { windowMs: 60000, maxRequests: 60 });
-    if (!rateCheck.allowed) {
+    if (user.role !== 'admin') {
       return NextResponse.json(
-        { success: false, error: 'Too many requests' },
-        { status: 429 }
+        { success: false, error: 'Admin access required' },
+        { status: 403 }
       );
     }
 
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type'); // 'normal' | 'preorder' | null
+    const type = searchParams.get('type');
 
     let orders;
     if (type === 'normal' || type === 'preorder') {

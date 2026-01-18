@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOrderByOrderNo, getEventsByOrderId } from '@/lib/db';
+import { getOrderByToken } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ orderNo: string }> }
+  { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const user = await getSession();
@@ -15,8 +15,8 @@ export async function GET(
       );
     }
 
-    const { orderNo } = await params;
-    const order = await getOrderByOrderNo(orderNo);
+    const { token } = await params;
+    const order = await getOrderByToken(token);
 
     if (!order) {
       return NextResponse.json(
@@ -35,14 +35,9 @@ export async function GET(
       );
     }
 
-    const events = isAdmin ? await getEventsByOrderId(order.id) : [];
-
     return NextResponse.json({
       success: true,
-      data: {
-        order,
-        events,
-      },
+      data: { order },
     });
   } catch (error) {
     console.error('Error fetching order:', error);
@@ -52,4 +47,3 @@ export async function GET(
     );
   }
 }
-

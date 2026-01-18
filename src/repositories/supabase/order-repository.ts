@@ -39,6 +39,7 @@ export class SupabaseOrderRepository implements IOrderRepository {
       delivery_notes: row.delivery_notes,
       invoice_url: row.invoice_url,
       invoice_generated_at: row.invoice_generated_at,
+      invoice_token: row.invoice_token,
       email_flags: row.email_flags || {},
       needs_weekend_hello: row.needs_weekend_hello,
       next_status_at: row.next_status_at,
@@ -294,13 +295,18 @@ export class SupabaseOrderRepository implements IOrderRepository {
     return this.mapDbToOrder(data);
   }
 
-  async setInvoiceUrl(id: string, url: string): Promise<Order> {
+  async setInvoiceUrl(id: string, url: string, token?: string): Promise<Order> {
+    const updateData: Record<string, unknown> = { 
+      invoice_url: url,
+      invoice_generated_at: new Date().toISOString(),
+    };
+    if (token) {
+      updateData.invoice_token = token;
+    }
+
     const { data, error } = await this.supabase
       .from('orders')
-      .update({ 
-        invoice_url: url,
-        invoice_generated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', id)
       .select('*, order_items(*)')
       .single();

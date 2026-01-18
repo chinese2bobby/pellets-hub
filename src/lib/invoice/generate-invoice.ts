@@ -1,9 +1,9 @@
 // Invoice HTML Generator - Pelletor
 // Corporate professional design for German/Austrian customers
 
-import { Order, Salutation } from '@/types';
+import { Order, Salutation, CompanySettings } from '@/types';
 import { formatCurrency } from '@/lib/utils';
-import { COMPANY } from '@/config';
+import { getCompanySettings } from '@/lib/db';
 
 export interface InvoiceData {
   invoiceNo: string;
@@ -60,7 +60,21 @@ function generateEpcQrUrl(
   return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(epcData)}`;
 }
 
-export function generateInvoiceHTML(data: InvoiceData): string {
+// Warehouse notice - shown before bank details
+function getWarehouseHinweis(s: CompanySettings): string {
+  return `
+    <div class="warehouse-hinweis">
+      <p><strong>Hinweis zum Zahlungsempfänger:</strong></p>
+      <p>Aufgrund des aktuell sehr hohen Bestellaufkommens wird Ihre Lieferung aus einem unserer externen Lager abgewickelt. 
+      Die Zahlung geht daher direkt auf das Konto unseres zweiten Lagerstandortes ein.</p>
+      <p>Bitte beachten Sie, dass der Kontoinhaber in diesem Fall <strong>${s.payment_recipient}</strong> lautet. 
+      Selbstverständlich bleibt Ihre Bestellung vollständig bei ${s.legal_name} registriert und abgesichert.</p>
+    </div>
+  `;
+}
+
+export async function generateInvoiceHTML(data: InvoiceData): Promise<string> {
+  const s = await getCompanySettings();
   const { invoiceNo, order, generatedAt } = data;
   const hasCompany = Boolean(order.company_name);
   const salutation = getSalutation(order.salutation, order.customer_name, hasCompany);
@@ -90,18 +104,19 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   // QR code only for vorkasse (full amount) and rechnung (50% prepayment)
   const showQrCode = order.payment_method === 'vorkasse' || order.payment_method === 'rechnung';
   const qrCodeUrl = showQrCode
-    ? generateEpcQrUrl(amountToPay, `RE ${order.order_no}`, COMPANY.iban, COMPANY.bic, COMPANY.payment_recipient)
+    ? generateEpcQrUrl(amountToPay, `RE ${order.order_no}`, s.iban, s.bic, s.payment_recipient)
     : null;
 
   // Show bank details for: vorkasse, rechnung, lastschrift (no QR for lastschrift)
   const showBankDetails = ['vorkasse', 'rechnung', 'lastschrift'].includes(order.payment_method);
 
   const getBankDetailsHtml = (showQr = false, amountLabel = 'Betrag', amount = totalGross) => `
+    ${getWarehouseHinweis(s)}
     <div class="${showQr ? 'bank-with-qr' : ''}">
       <table class="bank-details">
-        <tr><td class="label">Empfänger:</td><td>${COMPANY.payment_recipient}</td></tr>
-        <tr><td class="label">IBAN:</td><td class="mono">${COMPANY.iban}</td></tr>
-        <tr><td class="label">BIC:</td><td class="mono">${COMPANY.bic}</td></tr>
+        <tr><td class="label">Empfänger:</td><td>${s.payment_recipient}</td></tr>
+        <tr><td class="label">IBAN:</td><td class="mono">${s.iban}</td></tr>
+        <tr><td class="label">BIC:</td><td class="mono">${s.bic}</td></tr>
         <tr><td class="label">Verwendungszweck:</td><td class="ref">${order.order_no}</td></tr>
         <tr><td class="label">${amountLabel}:</td><td class="ref">${formatCurrency(amount, order.country)}</td></tr>
       </table>
@@ -140,7 +155,7 @@ export function generateInvoiceHTML(data: InvoiceData): string {
     if (isReverseCharge) {
       return `
         <p><strong>Hinweis zur Steuerschuldumkehr:</strong> Steuerschuldnerschaft des Leistungsempfängers gemäß Art. 196 MwStSystRL. Die Umsatzsteuer ist vom Leistungsempfänger zu entrichten.</p>
-        <p>UID-Nr. Leistungsempfänger: ${order.vat_id || '—'} | UID-Nr. Leistungserbringer: ${COMPANY.vat_id}</p>
+        <p>UID-Nr. Leistungsempfänger: ${order.vat_id || '—'} | UID-Nr. Leistungserbringer: ${s.vat_id}</p>
       `;
     }
     if (order.country === 'AT') {
@@ -318,6 +333,21 @@ export function generateInvoiceHTML(data: InvoiceData): string {
       font-weight: 700;
     }
 
+    /* Warehouse Hinweis */
+    .warehouse-hinweis {
+      background: #fff8e6;
+      border: 1px solid #e6a700;
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      font-size: 8pt;
+      color: #8a6500;
+      line-height: 1.5;
+    }
+    .warehouse-hinweis p {
+      margin: 4px 0;
+    }
+
     /* Payment Section */
     .payment-section {
       margin: 20px 0;
@@ -440,11 +470,11 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   <!-- Header -->
   <div class="header">
     <div class="header-logo">
-      <img src="${COMPANY.logo_url}" alt="${COMPANY.name}" onerror="this.outerHTML='<span style=font-size:16pt;font-weight:bold>PELLETOR</span>'" />
+      <img src="${s.logo_url}" alt="${s.name}" onerror="this.outerHTML='<span style=font-size:16pt;font-weight:bold>PELLETOR</span>'" />
     </div>
     <div class="header-company">
-      <strong>${COMPANY.legal_name}</strong>
-      ${COMPANY.address.street} · ${COMPANY.address.zip} ${COMPANY.address.city}
+      <strong>${s.legal_name}</strong>
+      ${s.address_street} · ${s.address_zip} ${s.address_city}
     </div>
   </div>
 
@@ -563,19 +593,19 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   <!-- Footer -->
   <div class="footer">
     <div class="footer-col">
-      <strong>${COMPANY.ceo_title}:</strong> ${COMPANY.ceo}<br>
-      <strong>USt-IdNr.:</strong> ${COMPANY.vat_id}
+      <strong>${s.ceo_title}:</strong> ${s.ceo}<br>
+      <strong>USt-IdNr.:</strong> ${s.vat_id}
     </div>
     <div class="footer-col">
-      <strong>Handelsregister:</strong> ${COMPANY.company_register}<br>
-      <strong>Registergericht:</strong> ${COMPANY.register_court}
+      <strong>Handelsregister:</strong> ${s.company_register}<br>
+      <strong>Registergericht:</strong> ${s.register_court}
     </div>
     <div class="footer-col">
-      <strong>Bank:</strong> ${COMPANY.bank_name}<br>
-      <strong>IBAN:</strong> ${COMPANY.iban}
+      <strong>Bank:</strong> ${s.bank_name}<br>
+      <strong>IBAN:</strong> ${s.iban}
     </div>
     <div class="footer-center">
-      ${COMPANY.legal_name} · ${COMPANY.address.street} · ${COMPANY.address.zip} ${COMPANY.address.city} · Tel: ${COMPANY.phone} · ${COMPANY.email}
+      ${s.legal_name} · ${s.address_street} · ${s.address_zip} ${s.address_city} · Tel: ${s.phone} · ${s.email}
     </div>
   </div>
 </body>

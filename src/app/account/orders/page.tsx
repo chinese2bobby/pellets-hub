@@ -69,7 +69,7 @@ export default function CustomerOrdersPage() {
               {orders.length} {orders.length === 1 ? 'Bestellung' : 'Bestellungen'}
             </p>
           </div>
-          <Link href="https://pelletor.de/bestellung.html" target="_blank">
+          <Link href="https://pelletor.at/bestellung.html" target="_blank">
             <Button className="bg-[#2D5016] hover:bg-[#1a3009]">
               <Package className="w-4 h-4 mr-2" />
               Neue Bestellung
@@ -87,7 +87,7 @@ export default function CustomerOrdersPage() {
                 <p className="text-gray-500 mb-6">
                   Sie haben noch keine Bestellungen aufgegeben. Bestellen Sie jetzt Ihre Holzpellets.
                 </p>
-                <Link href="https://pelletor.de/bestellung.html" target="_blank">
+                <Link href="https://pelletor.at/bestellung.html" target="_blank">
                   <Button className="bg-[#2D5016] hover:bg-[#1a3009]">
                     Erste Bestellung aufgeben
                   </Button>

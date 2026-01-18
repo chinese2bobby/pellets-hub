@@ -19,16 +19,16 @@ import {
   insertOutboxEntry,
 } from '@/lib/db';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
-import { hashPassword } from '@/lib/auth';
-import {
-  checkRateLimit,
-  verifyBotProtection,
-  getClientIP,
-  sanitizeString,
-  isValidEmail,
-  isValidPhone,
-  RATE_LIMITS
-} from '@/lib/security';
+
+// Hash password for user creation
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 // Create user account during checkout
 async function createUserAccount(
@@ -55,7 +55,7 @@ async function createUserAccount(
       return existing.id;
     }
 
-    // Hash password with bcrypt
+    // Hash password and create user
     const passwordHash = await hashPassword(password);
 
     const { data: user, error: userError } = await supabase
@@ -85,7 +85,7 @@ async function createUserAccount(
         default_country: country || 'DE',
       });
 
-    console.log(`User account created: ${email}`);
+    console.log(`✅ User account created: ${email}`);
     return user.id;
   } catch (error) {
     console.error('User creation error:', error);
@@ -93,32 +93,12 @@ async function createUserAccount(
   }
 }
 
-// Allowed origins for CORS
-const ALLOWED_ORIGINS = [
-  'https://pelletor.at',
-  'https://www.pelletor.at',
-  'https://pelletor.de',
-  'https://www.pelletor.de',
-  ...(process.env.NODE_ENV === 'development' ? [
-    'http://localhost:3000',
-    'http://localhost:8080',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:8080',
-  ] : []),
-];
-
-// Get CORS headers with proper origin check
-function getCorsHeaders(request: NextRequest): Record<string, string> {
-  const origin = request.headers.get('origin') || '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Credentials': 'true',
-  };
-}
+// CORS headers for cross-origin requests from pellets-de-1
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*', // In production, replace with specific domain
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
 
 // Product pricing data (matches pellets-de-1 pricing)
 const PRODUCTS = {
@@ -165,10 +145,6 @@ interface PreorderFormData {
   payment: PaymentMethod;
   acceptTerms: boolean;
   acceptDelivery: boolean;
-  // Bot protection fields
-  botToken?: string;
-  botTimestamp?: number;
-  website?: string; // honeypot
 }
 
 // Normal order form input (from bestellung.html)
@@ -197,10 +173,6 @@ interface OrderFormData {
   agb: boolean;
   newsletter?: boolean;
   password?: string; // For account creation during checkout
-  // Bot protection fields
-  botToken?: string;
-  botTimestamp?: number;
-  website?: string; // honeypot
 }
 
 type FormData = PreorderFormData | OrderFormData;
@@ -301,7 +273,7 @@ function parsePreorder(formData: PreorderFormData): {
   const productInfo = PRODUCTS[formData.product];
   let kg: number;
   let quantity: number;
-
+  
   if (formData.product === 'silo') {
     kg = formData.quantityKg || 3000;
     quantity = kg;
@@ -309,9 +281,9 @@ function parsePreorder(formData: PreorderFormData): {
     quantity = formData.quantity || 2;
     kg = quantity * 975;
   }
-
+  
   const priceNet = Math.round(kg * productInfo.pricePerKg * 100); // Convert to cents
-
+  
   const items: OrderItem[] = [{
     id: crypto.randomUUID(),
     order_id: '', // Will be set later
@@ -331,26 +303,26 @@ function parsePreorder(formData: PreorderFormData): {
     'nov26': '2026-11',
     'dec26': '2026-12',
   };
-
+  
   const monthBase = monthMap[formData.month] || '2026-08';
-  const deliveryDate = formData.monthHalf === 'first'
-    ? `${monthBase}-01`
+  const deliveryDate = formData.monthHalf === 'first' 
+    ? `${monthBase}-01` 
     : `${monthBase}-16`;
 
   return {
     items,
     deliveryAddress: {
       country: formData.country,
-      street: sanitizeString(formData.street, 200),
-      house_no: sanitizeString(formData.housenumber, 20),
-      zip: sanitizeString(formData.plz, 10),
-      city: sanitizeString(formData.city, 100),
-      access_notes: sanitizeString(formData.deliveryNotes || '', 500),
+      street: formData.street,
+      house_no: formData.housenumber,
+      zip: formData.plz,
+      city: formData.city,
+      access_notes: formData.deliveryNotes,
       is_default: false,
     },
-    customerName: `${sanitizeString(formData.firstName, 100)} ${sanitizeString(formData.lastName, 100)}`,
+    customerName: `${formData.firstName} ${formData.lastName}`,
     deliveryDate,
-    deliveryNotes: sanitizeString(formData.deliveryNotes || '', 500),
+    deliveryNotes: formData.deliveryNotes,
   };
 }
 
@@ -364,17 +336,17 @@ function parseOrder(formData: OrderFormData): {
   deliveryNotes?: string;
 } {
   const country: Country = formData.country === 'oesterreich' ? 'AT' : 'DE';
-
+  
   // Parse product type
   const productKey = formData.pelletType as keyof typeof PRODUCTS;
   const productInfo = PRODUCTS[productKey] || PRODUCTS['eco-975'];
-
+  
   // Parse quantity
   let qty = parseInt(formData.quantity) || 1;
   const kg = productInfo.kg || (qty * 975);
   const pricePerKg = productInfo.pricePerKg || 0.2499;
   const priceNet = Math.round(kg * pricePerKg * 100); // Convert to cents
-
+  
   const items: OrderItem[] = [{
     id: crypto.randomUUID(),
     order_id: '',
@@ -389,21 +361,20 @@ function parseOrder(formData: OrderFormData): {
   // Combine delivery notes
   const notes = [formData.besonderheiten, formData.hinweise]
     .filter(Boolean)
-    .map(n => sanitizeString(n!, 300))
     .join('\n');
 
   return {
     items,
     deliveryAddress: {
       country,
-      street: sanitizeString(formData.strasse, 200),
+      street: formData.strasse,
       house_no: '',
-      zip: sanitizeString(formData.plz, 10),
-      city: sanitizeString(formData.ort, 100),
+      zip: formData.plz,
+      city: formData.ort,
       access_notes: notes,
       is_default: false,
     },
-    customerName: `${sanitizeString(formData.vorname, 100)} ${sanitizeString(formData.nachname, 100)}`,
+    customerName: `${formData.vorname} ${formData.nachname}`,
     country,
     deliveryDate: formData.lieferdatum,
     deliveryNotes: notes,
@@ -412,49 +383,19 @@ function parseOrder(formData: OrderFormData): {
 
 // Handle OPTIONS request for CORS preflight
 export async function OPTIONS(request: NextRequest) {
-  return NextResponse.json({}, { headers: getCorsHeaders(request) });
+  return NextResponse.json({}, { headers: corsHeaders });
 }
 
 // Handle POST request - submit order
 export async function POST(request: NextRequest) {
-  const corsHeaders = getCorsHeaders(request);
-
   try {
-    const ip = getClientIP(request);
-
-    // Rate limiting
-    const rateCheck = checkRateLimit(`order:${ip}`, RATE_LIMITS.orderSubmit);
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        { success: false, error: 'Zu viele Anfragen. Bitte warten Sie einige Minuten.' },
-        { status: 429, headers: corsHeaders }
-      );
-    }
-
     const body = await request.json();
     const formData = body as FormData;
-
-    // Bot protection check (only for forms that include bot protection fields)
-    if (formData.botToken || formData.botTimestamp) {
-      const botCheck = verifyBotProtection({
-        botToken: formData.botToken,
-        botTimestamp: formData.botTimestamp,
-        honeypot: formData.website,
-      });
-
-      if (!botCheck.valid) {
-        console.log(`Bot detected on order: ${botCheck.reason} from ${ip}`);
-        return NextResponse.json(
-          { success: false, error: 'Bestellung fehlgeschlagen. Bitte versuchen Sie es erneut.' },
-          { status: 400, headers: corsHeaders }
-        );
-      }
-    }
 
     // Determine order type and parse data
     const isPreorder = 'type' in formData && formData.type === 'preorder' || 'month' in formData;
     const orderType: OrderType = isPreorder ? 'preorder' : 'normal';
-
+    
     let items: OrderItem[];
     let deliveryAddress: any;
     let customerName: string;
@@ -480,15 +421,15 @@ export async function POST(request: NextRequest) {
       country = preorderData.country;
       deliveryDate = parsed.deliveryDate;
       deliveryNotes = parsed.deliveryNotes;
-      email = sanitizeString(preorderData.email, 254).toLowerCase();
-      phone = sanitizeString(preorderData.phone || '', 30);
-      companyName = sanitizeString(preorderData.company || '', 200);
-      vatId = sanitizeString(preorderData.vatId || '', 20);
+      email = preorderData.email;
+      phone = preorderData.phone;
+      companyName = preorderData.company;
+      vatId = preorderData.vatId;
       paymentMethod = preorderData.payment || 'vorkasse';
       salutation = preorderData.salutation as typeof salutation;
       password = preorderData.password;
-      firstName = sanitizeString(preorderData.firstName, 100);
-      lastName = sanitizeString(preorderData.lastName, 100);
+      firstName = preorderData.firstName;
+      lastName = preorderData.lastName;
     } else {
       const orderData = formData as OrderFormData;
       const parsed = parseOrder(orderData);
@@ -498,31 +439,15 @@ export async function POST(request: NextRequest) {
       country = parsed.country;
       deliveryDate = parsed.deliveryDate;
       deliveryNotes = parsed.deliveryNotes;
-      email = sanitizeString(orderData.email, 254).toLowerCase();
-      phone = sanitizeString(orderData.telefon || '', 30);
-      companyName = sanitizeString(orderData.firma || '', 200);
-      vatId = sanitizeString(orderData.ustIdNr || '', 20);
+      email = orderData.email;
+      phone = orderData.telefon;
+      companyName = orderData.firma;
+      vatId = orderData.ustIdNr;
       paymentMethod = orderData.zahlungsart;
       salutation = orderData.anrede as typeof salutation;
       password = orderData.password;
-      firstName = sanitizeString(orderData.vorname, 100);
-      lastName = sanitizeString(orderData.nachname, 100);
-    }
-
-    // Validate email
-    if (!isValidEmail(email)) {
-      return NextResponse.json(
-        { success: false, error: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.' },
-        { status: 400, headers: corsHeaders }
-      );
-    }
-
-    // Validate phone if provided
-    if (phone && !isValidPhone(phone)) {
-      return NextResponse.json(
-        { success: false, error: 'Bitte geben Sie eine gültige Telefonnummer ein.' },
-        { status: 400, headers: corsHeaders }
-      );
+      firstName = orderData.vorname;
+      lastName = orderData.nachname;
     }
 
     // Generate order ID
@@ -533,21 +458,26 @@ export async function POST(request: NextRequest) {
 
     // Calculate totals with B2B / Reverse Charge logic
     const totals = calculateTotals(items, country, companyName, vatId);
-
+    
     // Initial email flags
     const emailFlags: EmailFlags = {
       weekend_hello_sent: false,
       confirmation_sent: false,
     };
-
+    
     // Check if weekend order
     const needsWeekendHello = isWeekendOrder();
+    
+    const generateToken = () => {
+      const array = new Uint8Array(16);
+      crypto.getRandomValues(array);
+      return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+    };
 
-    // Create the order object (order_seq and order_no will be set by Supabase)
     const orderData: Omit<Order, 'order_seq' | 'order_no'> & { order_seq?: number; order_no?: string } = {
       id: orderId,
-      order_seq: undefined, // Will be auto-generated by Supabase
-      order_no: undefined,  // Will be set from order_seq
+      order_seq: undefined,
+      order_no: undefined,
       user_id: undefined,
       email,
       phone,
@@ -567,10 +497,11 @@ export async function POST(request: NextRequest) {
       delivery_notes: deliveryNotes,
       email_flags: emailFlags,
       needs_weekend_hello: needsWeekendHello,
+      order_token: generateToken(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-
+    
     // Insert order into database (returns order with order_seq and order_no from Supabase)
     const order = await insertOrder(orderData as Order);
     const orderNo = order.order_no!;
@@ -605,13 +536,14 @@ export async function POST(request: NextRequest) {
         country,
       },
       status: 'pending',
+      attempts: 0,
       created_at: new Date().toISOString(),
     };
     await insertOutboxEntry(outboxEntry);
 
-    console.log(`Order created: ${orderNo} (${orderType}) for ${customerName}`);
+    console.log(`✅ Order created: ${orderNo} (${orderType}) for ${customerName}`);
 
-    // Create user account if password was provided
+    // Create user account if password was provided, then link to order
     let userId: string | null = null;
     if (password && firstName && lastName) {
       userId = await createUserAccount(
@@ -623,6 +555,25 @@ export async function POST(request: NextRequest) {
         companyName,
         country
       );
+      
+      if (userId) {
+        const { updateOrder } = await import('@/lib/db');
+        await updateOrder(orderId, { user_id: userId });
+        console.log(`✅ Order ${orderNo} linked to user ${userId}`);
+      }
+    } else {
+      const supabase = await createAdminSupabaseClient();
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .single();
+      
+      if (existingUser) {
+        const { updateOrder } = await import('@/lib/db');
+        await updateOrder(orderId, { user_id: existingUser.id });
+        console.log(`✅ Order ${orderNo} linked to existing user ${existingUser.id}`);
+      }
     }
 
     // Return success response
@@ -637,15 +588,15 @@ export async function POST(request: NextRequest) {
         currency: 'EUR',
       },
       message: `${isPreorder ? 'Vorbestellung' : 'Bestellung'} erfolgreich erstellt.`
-    }, {
-      status: 201,
-      headers: corsHeaders
+    }, { 
+      status: 201, 
+      headers: corsHeaders 
     });
-
+    
   } catch (error) {
     console.error('Order submission error:', error);
     return NextResponse.json(
-      { success: false, error: 'Serverfehler. Bitte versuchen Sie es erneut.' },
+      { success: false, error: 'Internal server error', details: String(error) },
       { status: 500, headers: corsHeaders }
     );
   }

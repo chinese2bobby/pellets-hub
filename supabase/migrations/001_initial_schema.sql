@@ -182,6 +182,8 @@ CREATE TABLE orders (
   -- Invoice
   invoice_url TEXT,
   invoice_generated_at TIMESTAMPTZ,
+  invoice_token TEXT UNIQUE,
+  order_token TEXT UNIQUE,
   
   -- Email flags
   email_flags JSONB DEFAULT '{}'::JSONB,
@@ -210,6 +212,8 @@ CREATE INDEX idx_orders_payment_status ON orders(payment_status);
 CREATE INDEX idx_orders_created ON orders(created_at DESC);
 CREATE INDEX idx_orders_next_status ON orders(next_status_at) WHERE next_status_at IS NOT NULL;
 CREATE INDEX idx_orders_weekend_hello ON orders(needs_weekend_hello) WHERE needs_weekend_hello = TRUE;
+CREATE INDEX idx_orders_invoice_token ON orders(invoice_token) WHERE invoice_token IS NOT NULL;
+CREATE INDEX idx_orders_order_token ON orders(order_token) WHERE order_token IS NOT NULL;
 
 -- ============================================
 -- ORDER ITEMS

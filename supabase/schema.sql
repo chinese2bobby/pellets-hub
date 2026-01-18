@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS orders (
   order_seq SERIAL UNIQUE,
 
   -- Customer info
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   email TEXT NOT NULL,
   phone TEXT,
   customer_name TEXT NOT NULL,
@@ -47,6 +47,10 @@ CREATE TABLE IF NOT EXISTS orders (
   -- Invoice
   invoice_url TEXT,
   invoice_generated_at TIMESTAMPTZ,
+  invoice_token TEXT UNIQUE,
+  
+  -- Secure order access token
+  order_token TEXT UNIQUE,
 
   -- Email tracking
   email_flags JSONB DEFAULT '{}',
@@ -73,6 +77,8 @@ CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
 CREATE INDEX idx_orders_next_status_at ON orders(next_status_at) WHERE next_status_at IS NOT NULL;
 CREATE INDEX idx_orders_needs_weekend_hello ON orders(needs_weekend_hello) WHERE needs_weekend_hello = TRUE;
+CREATE INDEX idx_orders_invoice_token ON orders(invoice_token) WHERE invoice_token IS NOT NULL;
+CREATE INDEX idx_orders_order_token ON orders(order_token) WHERE order_token IS NOT NULL;
 
 -- ============================================
 -- ORDER ITEMS TABLE

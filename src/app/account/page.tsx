@@ -211,7 +211,7 @@ export default function AccountDashboard() {
                 Schnellzugriff
               </h3>
               <div className="space-y-2">
-                <Link href="https://pelletor.de/bestellung.html" target="_blank" className="flex items-center justify-between p-3 rounded-xl bg-[#2D5016]/5 hover:bg-[#2D5016]/10 transition-colors group">
+                <Link href="https://pelletor.at/bestellung.html" target="_blank" className="flex items-center justify-between p-3 rounded-xl bg-[#2D5016]/5 hover:bg-[#2D5016]/10 transition-colors group">
                   <div className="flex items-center gap-3">
                     <ShoppingBag className="w-5 h-5 text-[#2D5016]" />
                     <span className="font-medium text-gray-900">Neue Bestellung</span>
@@ -275,7 +275,7 @@ export default function AccountDashboard() {
                 <p className="text-gray-500 mb-6 max-w-md mx-auto">
                   Bestellen Sie jetzt Ihre ersten Holzpellets und profitieren Sie von unseren günstigen Preisen.
                 </p>
-                <Link href="https://pelletor.de/bestellung.html" target="_blank">
+                <Link href="https://pelletor.at/bestellung.html" target="_blank">
                   <Button className="bg-[#2D5016] hover:bg-[#1a3009]">
                     <ShoppingBag className="w-4 h-4 mr-2" />
                     Jetzt bestellen
