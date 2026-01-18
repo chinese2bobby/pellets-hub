@@ -20,7 +20,7 @@ const COMPANY = {
   name: 'Pelletor',
   legal_name: 'Or Projekt GmbH',
   address: { street: 'Fördepromenade 2', zip: '24944', city: 'Flensburg' },
-  phone: '+49 461 9041 2830',
+  phone: '+49 157 89812544',
   email: 'kundenservice@pelletor.at',
   iban: 'DE89 2175 0000 0017 2838 00',
   bic: 'NOLADE21NOS',

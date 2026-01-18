@@ -46,7 +46,7 @@ export const COMPANY = {
   ceo_title: 'Geschäftsführer',
 
   // Contact
-  phone: '+49 461 9041 2830',
+  phone: '+49 157 89812544',
   email: 'kundenservice@pelletor.at',
   support_email: 'service@pelletor.at',
   order_email: 'bestellung@pelletor.at',

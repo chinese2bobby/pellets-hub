@@ -272,7 +272,7 @@ export function EmailComposer({ order, isOpen, onClose, onSend }: EmailComposerP
               <div style={{ background: '#f9fafb', padding: '16px', borderTop: '1px solid #e5e7eb', fontSize: '11px', color: '#6b7280', textAlign: 'center' }}>
                 <p style={{ fontWeight: '600', marginBottom: '4px' }}>Or Projekt GmbH</p>
                 <p>Fördepromenade 2 | 24944 Flensburg | Deutschland</p>
-                <p>Tel: +49 461 904 12 83 | kundenservice@pelletor.at</p>
+                <p>Tel: +49 157 89812544 | kundenservice@pelletor.at</p>
               </div>
             </div>
           </div>
