@@ -49,6 +49,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'srtsuzvjjcrliuaftvce.supabase.co',
+      },
+    ],
+  },
   async headers() {
     return [
       {
