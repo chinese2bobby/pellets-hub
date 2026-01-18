@@ -1,19 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllOrders, getOrdersByType, getMetrics } from '@/lib/db';
-
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
-}
+import { getSession } from '@/lib/auth';
+import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/security';
 
 export async function GET(request: NextRequest) {
   try {
+    // Admin auth check
+    const user = await getSession();
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Rate limiting for admin endpoints
+    const ip = getClientIP(request);
+    const rateCheck = checkRateLimit(`admin:orders:${ip}`, { windowMs: 60000, maxRequests: 60 });
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests' },
+        { status: 429 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // 'normal' | 'preorder' | null
 
@@ -32,13 +42,13 @@ export async function GET(request: NextRequest) {
         orders,
         metrics,
       }
-    }, { headers: corsHeaders });
+    });
   } catch (error) {
     console.error('Error fetching orders:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch orders',
-    }, { status: 500, headers: corsHeaders });
+    }, { status: 500 });
   }
 }
 

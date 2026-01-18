@@ -51,6 +51,7 @@ export class MetricsService {
       normalOrders,
       preorders,
       vorkasseOrders,
+      rechnungOrders,
       lastschriftOrders,
       paypalOrders,
       klarnaOrders,
@@ -62,6 +63,7 @@ export class MetricsService {
       this.orderRepo.countByFilters({ ...baseFilters, order_type: 'normal' }),
       this.orderRepo.countByFilters({ ...baseFilters, order_type: 'preorder' }),
       this.orderRepo.countByFilters({ ...baseFilters, payment_method: 'vorkasse' }),
+      this.orderRepo.countByFilters({ ...baseFilters, payment_method: 'rechnung' }),
       this.orderRepo.countByFilters({ ...baseFilters, payment_method: 'lastschrift' }),
       this.orderRepo.countByFilters({ ...baseFilters, payment_method: 'paypal' }),
       this.orderRepo.countByFilters({ ...baseFilters, payment_method: 'klarna' }),
@@ -88,6 +90,7 @@ export class MetricsService {
       },
       by_payment_method: {
         vorkasse: vorkasseOrders,
+        rechnung: rechnungOrders,
         lastschrift: lastschriftOrders,
         paypal: paypalOrders,
         klarna: klarnaOrders,
@@ -158,9 +161,10 @@ export class MetricsService {
   }
 
   async getRevenueByPaymentMethod(): Promise<Record<PaymentMethod, number>> {
-    const methods: PaymentMethod[] = ['vorkasse', 'lastschrift', 'paypal', 'klarna'];
+    const methods: PaymentMethod[] = ['vorkasse', 'rechnung', 'lastschrift', 'paypal', 'klarna'];
     const results: Record<PaymentMethod, number> = {
       vorkasse: 0,
+      rechnung: 0,
       lastschrift: 0,
       paypal: 0,
       klarna: 0,

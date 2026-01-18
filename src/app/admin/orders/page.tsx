@@ -16,7 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog } from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { OrderCard } from '@/components/orders/order-card';
 import { Order } from '@/types';
 
@@ -389,13 +389,13 @@ export default function AdminOrdersPage() {
       </main>
 
       {/* Confirmation Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={actionDialog !== null}
         onClose={() => setActionDialog(null)}
         title={dialogContent.title}
         description={dialogContent.description}
         confirmLabel={dialogContent.confirmLabel}
-        cancelLabel="Cancel"
+        cancelLabel="Abbrechen"
         variant={dialogContent.variant}
         onConfirm={confirmAction}
         loading={actionLoading}

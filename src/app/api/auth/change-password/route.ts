@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getSession, hashPassword, verifyPassword } from '@/lib/auth';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
-
-// Hash password with SHA-256
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
+import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/security';
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const ip = getClientIP(request);
+    const rateCheck = checkRateLimit(`change-pwd:${ip}`, RATE_LIMITS.passwordReset);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Zu viele Anfragen. Bitte warten Sie.' },
+        { status: 429 }
+      );
+    }
+
     // Check if user is logged in
     const user = await getSession();
     if (!user) {
@@ -55,16 +56,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify current password
-    const currentHash = await hashPassword(currentPassword);
-    if (dbUser.password_hash !== currentHash) {
+    // Verify current password (supports both bcrypt and legacy SHA-256)
+    const isValid = await verifyPassword(currentPassword, dbUser.password_hash);
+    if (!isValid) {
       return NextResponse.json(
         { success: false, error: 'Aktuelles Passwort ist falsch' },
         { status: 400 }
       );
     }
 
-    // Update password
+    // Update password with bcrypt
     const newHash = await hashPassword(newPassword);
     const { error: updateError } = await supabase
       .from('users')

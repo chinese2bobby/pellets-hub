@@ -22,7 +22,7 @@ import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog } from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { StatusBadge } from '@/components/orders/status-badge';
 import { EmailComposer } from '@/components/admin/email-composer';
 import { Order, OrderEvent } from '@/types';
@@ -498,13 +498,13 @@ export default function OrderDetailPage() {
       </main>
 
       {/* Confirmation Dialog */}
-      <Dialog
+      <ConfirmDialog
         open={actionDialog !== null}
         onClose={() => setActionDialog(null)}
         title={dialogContent.title}
         description={dialogContent.description}
         confirmLabel={dialogContent.confirmLabel}
-        cancelLabel="Cancel"
+        cancelLabel="Abbrechen"
         variant={dialogContent.variant}
         onConfirm={() => handleAction(actionDialog)}
         loading={actionLoading}

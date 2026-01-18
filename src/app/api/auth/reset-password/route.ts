@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
+import { hashPassword } from '@/lib/auth';
+import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/security';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Hash password with SHA-256
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
 
 // Generate 6-digit code
 function generateCode(): string {
@@ -97,9 +89,19 @@ function getResetEmailHtml(code: string): string {
 }
 
 // POST /api/auth/reset-password
-// Actions: request (send code) or verify (check code + reset password)
+// Actions: request (send code), check (verify code only), verify (check code + reset password)
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const ip = getClientIP(request);
+    const rateCheck = checkRateLimit(`reset-pwd:${ip}`, RATE_LIMITS.passwordReset);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Zu viele Anfragen. Bitte warten Sie einige Minuten.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { action } = body;
 
@@ -284,7 +286,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Hash new password and update user
+      // Hash new password with bcrypt and update user
       const passwordHash = await hashPassword(newPassword);
 
       const { error: updateError } = await supabase

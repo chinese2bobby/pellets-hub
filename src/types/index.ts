@@ -255,6 +255,7 @@ export interface EmailOutbox {
   payload: Record<string, unknown>;
   status: EmailStatus;
   error_message?: string;
+  attempts?: number;
   created_at: string;
   sent_at?: string;
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Order, PaymentMethod, Salutation } from '@/types';
+import { Order, PaymentMethod, Salutation, Address, Country, OrderItem, ProductUnit } from '@/types';
 
 // Import email template functions (we'll extract them)
 import { COMPANY, PRODUCTS } from '@/config';
@@ -1377,12 +1377,53 @@ function getDeliveredEmail(order: Order): { subject: string; html: string } {
 // DEMO ORDERS FOR PREVIEW
 // ============================================
 
+// Helper to create mock address with all required fields
+function createMockAddress(data: {
+  street: string;
+  house_no: string;
+  zip: string;
+  city: string;
+  country: Country;
+  access_notes?: string;
+}): Address {
+  return {
+    id: 'mock-address-' + Date.now(),
+    user_id: 'mock-user',
+    country: data.country,
+    street: data.street,
+    house_no: data.house_no,
+    zip: data.zip,
+    city: data.city,
+    access_notes: data.access_notes,
+    is_default: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+// Helper to create mock order item with all required fields
+function createMockItem(data: {
+  sku: string;
+  name: string;
+  quantity: number;
+  unit: ProductUnit;
+  unit_price_net: number;
+  line_total_net: number;
+}): OrderItem {
+  return {
+    id: 'mock-item-' + Date.now(),
+    order_id: 'mock-order',
+    ...data,
+  };
+}
+
 function createDemoOrder(
   type: 'de-b2c' | 'at-b2c' | 'de-b2b' | 'at-b2b-rc',
   paymentMethod: PaymentMethod = 'vorkasse'
 ): Order {
   const baseOrder = {
     id: 'demo-' + type,
+    order_seq: 300001,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     order_type: 'normal' as const,
@@ -1415,24 +1456,26 @@ function createDemoOrder(
         customer_name: 'Max Mustermann',
         email: 'max@example.de',
         phone: '+49 170 1234567',
-        delivery_address: {
+        delivery_address: createMockAddress({
           street: 'Hauptstraße',
           house_no: '42',
           zip: '10115',
           city: 'Berlin',
           country: 'DE',
-        },
+        }),
         delivery_notes: '',
-        items: [{
+        items: [createMockItem({
           sku: product.sku,
           name: product.name_de,
           quantity: 2,
-          unit: 'palette' as const,
+          unit: 'palette',
           unit_price_net: priceNet,
           line_total_net: priceNet * 2,
-        }],
+        })],
         totals: {
           subtotal_net: priceNet * 2,
+          shipping_net: 0,
+          surcharges_net: 0,
           vat_rate: 0.07,
           vat_label: 'MwSt.',
           vat_amount: Math.round(priceNet * 2 * 0.07),
@@ -1453,24 +1496,27 @@ function createDemoOrder(
         customer_name: 'Anna Schmidt',
         email: 'anna@example.at',
         phone: '+43 660 9876543',
-        delivery_address: {
+        delivery_address: createMockAddress({
           street: 'Ringstraße',
           house_no: '10',
           zip: '1010',
           city: 'Wien',
           country: 'AT',
-        },
+          access_notes: 'Bitte beim Nachbarn klingeln',
+        }),
         delivery_notes: 'Bitte beim Nachbarn klingeln',
-        items: [{
+        items: [createMockItem({
           sku: product.sku,
           name: product.name_at,
           quantity: 1,
-          unit: 'palette' as const,
+          unit: 'palette',
           unit_price_net: priceNet,
           line_total_net: priceNet,
-        }],
+        })],
         totals: {
           subtotal_net: priceNet,
+          shipping_net: 0,
+          surcharges_net: 0,
           vat_rate: 0.20,
           vat_label: 'USt.',
           vat_amount: Math.round(priceNet * 0.20),
@@ -1493,24 +1539,26 @@ function createDemoOrder(
         email: 'buchhaltung@mueller-gmbh.de',
         phone: '+49 89 12345678',
         vat_id: 'DE123456789',
-        delivery_address: {
+        delivery_address: createMockAddress({
           street: 'Industriestraße',
           house_no: '55',
           zip: '80331',
           city: 'München',
           country: 'DE',
-        },
+        }),
         delivery_notes: '',
-        items: [{
+        items: [createMockItem({
           sku: product.sku,
           name: product.name_de,
           quantity: 3,
-          unit: 'palette' as const,
+          unit: 'palette',
           unit_price_net: priceNet,
           line_total_net: priceNet * 3,
-        }],
+        })],
         totals: {
           subtotal_net: priceNet * 3,
+          shipping_net: 0,
+          surcharges_net: 0,
           vat_rate: 0.07,
           vat_label: 'MwSt.',
           vat_amount: Math.round(priceNet * 3 * 0.07),
@@ -1533,24 +1581,27 @@ function createDemoOrder(
         email: 'einkauf@holzbau.at',
         phone: '+43 1 98765432',
         vat_id: 'ATU12345678',
-        delivery_address: {
+        delivery_address: createMockAddress({
           street: 'Industriepark',
           house_no: '100',
           zip: '1230',
           city: 'Wien',
           country: 'AT',
-        },
+          access_notes: 'LKW-Zufahrt über Tor 3',
+        }),
         delivery_notes: 'LKW-Zufahrt über Tor 3',
-        items: [{
+        items: [createMockItem({
           sku: product.sku,
           name: product.name_at,
           quantity: 5,
-          unit: 'palette' as const,
+          unit: 'palette',
           unit_price_net: priceNet,
           line_total_net: priceNet * 5,
-        }],
+        })],
         totals: {
           subtotal_net: priceNet * 5,
+          shipping_net: 0,
+          surcharges_net: 0,
           vat_rate: 0,
           vat_label: 'USt.',
           vat_amount: 0,

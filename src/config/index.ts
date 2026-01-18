@@ -160,23 +160,28 @@ export const PAYMENT_METHODS: Record<PaymentMethod, {
   enabled: boolean;
 }> = {
   vorkasse: {
-    label: 'Bank Transfer',
-    description: 'Pay via bank transfer before delivery',
+    label: 'Vorkasse',
+    description: 'Zahlung per Überweisung vor Lieferung',
+    enabled: true,
+  },
+  rechnung: {
+    label: 'Rechnung',
+    description: 'Zahlung auf Rechnung nach Lieferung',
     enabled: true,
   },
   lastschrift: {
-    label: 'Direct Debit (SEPA)',
-    description: 'Convenient SEPA direct debit',
+    label: 'Lastschrift (SEPA)',
+    description: 'Bequeme SEPA-Lastschrift',
     enabled: true,
   },
   paypal: {
     label: 'PayPal',
-    description: 'Secure payment with PayPal buyer protection',
+    description: 'Sichere Zahlung mit PayPal-Käuferschutz',
     enabled: true,
   },
   klarna: {
     label: 'Klarna',
-    description: 'Buy now, pay later',
+    description: 'Jetzt kaufen, später bezahlen',
     enabled: true,
   },
 };

@@ -2,11 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getOrderById, getOrderByOrderNo, updateOrder, insertEvent } from '@/lib/db';
 import { generateInvoiceHTML, generateInvoiceNo } from '@/lib/invoice/generate-invoice';
 import { OrderEvent } from '@/types';
+import { getSession } from '@/lib/auth';
+import { checkRateLimit, getClientIP } from '@/lib/security';
 
 // GET /api/orders/invoice?orderId=xxx or ?orderNo=xxx
 // Returns invoice HTML or triggers PDF download
 export async function GET(request: NextRequest) {
   try {
+    // Admin auth check
+    const user = await getSession();
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Rate limiting
+    const ip = getClientIP(request);
+    const rateCheck = checkRateLimit(`admin:invoice:${ip}`, { windowMs: 60000, maxRequests: 30 });
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests' },
+        { status: 429 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
     const orderNo = searchParams.get('orderNo');
@@ -94,6 +115,25 @@ export async function GET(request: NextRequest) {
 // POST /api/orders/invoice - Generate and optionally send invoice
 export async function POST(request: NextRequest) {
   try {
+    // Admin auth check
+    const user = await getSession();
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Rate limiting
+    const ip = getClientIP(request);
+    const rateCheck = checkRateLimit(`admin:invoice:${ip}`, { windowMs: 60000, maxRequests: 20 });
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { orderId, sendEmail } = body;
 

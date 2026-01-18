@@ -582,5 +582,3 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 </html>
   `.trim();
 }
-
-export type { InvoiceData };

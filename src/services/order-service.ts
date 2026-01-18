@@ -216,10 +216,10 @@ export class OrderService {
 
     // Get delay configuration
     const transitionKey = `${order.status}_to_${nextStatus}`.replace('_delivery', '');
-    const delays = STATUS_CONFIG.transitions as Record<string, { min: number; max: number }>;
-    const config = delays[transitionKey];
+    const transitions = STATUS_CONFIG.transitions as unknown as Record<string, { min?: number; max?: number }>;
+    const config = transitions[transitionKey];
 
-    if (!config) return;
+    if (!config || config.min === undefined || config.max === undefined) return;
 
     // Calculate delay with deterministic randomness based on order ID
     const delay = getRandomDelay(order.id, config.min, config.max);

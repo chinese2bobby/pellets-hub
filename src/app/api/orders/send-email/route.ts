@@ -4,6 +4,8 @@ import { getOrderById, updateOrder, insertEvent, insertOutboxEntry, updateOutbox
 import { EmailType, Order, OrderEvent, EmailOutbox, Salutation } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { COMPANY, COUNTRY_CONFIG } from '@/config';
+import { getSession } from '@/lib/auth';
+import { checkRateLimit, getClientIP } from '@/lib/security';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'bestellung@pelletor.de';
@@ -401,6 +403,25 @@ function getEmailFlagKey(templateType: EmailType): keyof Order['email_flags'] | 
 
 export async function POST(request: NextRequest) {
   try {
+    // Admin auth check
+    const user = await getSession();
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Rate limiting for email sending
+    const ip = getClientIP(request);
+    const rateCheck = checkRateLimit(`admin:email:${ip}`, { windowMs: 60000, maxRequests: 20 });
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests' },
+        { status: 429 }
+      );
+    }
+
     const body: SendEmailRequest = await request.json();
     const { orderId, templateType, customSubject, customBody, attachInvoice } = body;
 

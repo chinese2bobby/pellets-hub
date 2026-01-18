@@ -1,32 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createAdminSupabaseClient } from '@/lib/supabase/server';
+import { hashPassword } from '@/lib/auth';
+import {
+  checkRateLimit,
+  verifyBotProtection,
+  getClientIP,
+  sanitizeString,
+  isValidEmail,
+  isValidPhone,
+  RATE_LIMITS
+} from '@/lib/security';
 import { Country } from '@/types';
-
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIP(request);
+
+    // Rate limiting
+    const rateCheck = checkRateLimit(`register:${ip}`, RATE_LIMITS.register);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Zu viele Anfragen. Bitte warten Sie einige Minuten.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
-    const { 
-      email, 
-      password, 
-      first_name, 
-      last_name, 
-      phone, 
-      company_name, 
-      default_country = 'AT' 
+
+    // Bot protection check
+    const botCheck = verifyBotProtection({
+      botToken: body.botToken,
+      botTimestamp: body.botTimestamp,
+      honeypot: body.website, // honeypot field named "website"
+    });
+
+    if (!botCheck.valid) {
+      console.log(`🤖 Bot detected on register: ${botCheck.reason} from ${ip}`);
+      // Return generic error to not reveal detection
+      return NextResponse.json(
+        { success: false, error: 'Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.' },
+        { status: 400 }
+      );
+    }
+
+    const {
+      email,
+      password,
+      first_name,
+      last_name,
+      phone,
+      company_name,
+      default_country = 'AT'
     } = body;
 
+    // Sanitize inputs
+    const cleanEmail = sanitizeString(email, 254).toLowerCase();
+    const cleanFirstName = sanitizeString(first_name, 100);
+    const cleanLastName = sanitizeString(last_name, 100);
+    const cleanPhone = sanitizeString(phone || '', 30);
+    const cleanCompany = sanitizeString(company_name || '', 200);
+
     // Validate required fields
-    if (!email || !password || !first_name || !last_name) {
+    if (!cleanEmail || !password || !cleanFirstName || !cleanLastName) {
       return NextResponse.json(
         { success: false, error: 'Alle Pflichtfelder müssen ausgefüllt werden.' },
         { status: 400 }
@@ -42,10 +78,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!isValidEmail(cleanEmail)) {
       return NextResponse.json(
         { success: false, error: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.' },
+        { status: 400 }
+      );
+    }
+
+    // Validate phone if provided
+    if (cleanPhone && !isValidPhone(cleanPhone)) {
+      return NextResponse.json(
+        { success: false, error: 'Bitte geben Sie eine gültige Telefonnummer ein.' },
         { status: 400 }
       );
     }
@@ -56,7 +99,7 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await supabase
       .from('users')
       .select('id')
-      .eq('email', email.toLowerCase())
+      .eq('email', cleanEmail)
       .single();
 
     if (existing) {
@@ -66,14 +109,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash password
+    // Hash password with bcrypt
     const passwordHash = await hashPassword(password);
 
     // Create user
     const { data: user, error: userError } = await supabase
       .from('users')
       .insert({
-        email: email.toLowerCase(),
+        email: cleanEmail,
         password_hash: passwordHash,
         role: 'customer',
       })
@@ -93,10 +136,10 @@ export async function POST(request: NextRequest) {
       .from('customer_profiles')
       .insert({
         user_id: user.id,
-        first_name,
-        last_name,
-        phone: phone || null,
-        company_name: company_name || null,
+        first_name: cleanFirstName,
+        last_name: cleanLastName,
+        phone: cleanPhone || null,
+        company_name: cleanCompany || null,
         default_country: default_country as Country,
       });
 
@@ -127,6 +170,8 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
+    console.log(`✅ New user registered: ${cleanEmail}`);
+
     return NextResponse.json({
       success: true,
       user: {
@@ -143,4 +188,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

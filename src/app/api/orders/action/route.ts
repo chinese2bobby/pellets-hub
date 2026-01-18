@@ -8,6 +8,8 @@ import {
 } from '@/lib/db';
 import { OrderEvent, EmailOutbox, OrderStatus } from '@/types';
 import { sendEmail } from '@/lib/email';
+import { getSession } from '@/lib/auth';
+import { checkRateLimit, getClientIP } from '@/lib/security';
 
 interface ActionRequest {
   action: 'send_hello' | 'send_confirmation' | 'cancel';
@@ -16,6 +18,25 @@ interface ActionRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Admin auth check
+    const user = await getSession();
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Rate limiting for admin actions
+    const ip = getClientIP(request);
+    const rateCheck = checkRateLimit(`admin:action:${ip}`, { windowMs: 60000, maxRequests: 30 });
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many requests' },
+        { status: 429 }
+      );
+    }
+
     const body: ActionRequest = await request.json();
     const { action, orderIds } = body;
 
