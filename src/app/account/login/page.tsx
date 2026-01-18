@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+import { ProgressiveBackground } from '@/components/ui/progressive-background';
+
 export default function CustomerLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -15,6 +17,9 @@ export default function CustomerLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const BG_FULL = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse.png";
+  const BG_BLUR = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse-blur.png";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,18 +48,24 @@ export default function CustomerLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FAFAF8] via-white to-[#f0f0e8] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen relative flex items-center justify-center p-4">
+      <ProgressiveBackground 
+        src={BG_FULL}
+        blurSrc={BG_BLUR}
+        overlayClassName="bg-black/50 backdrop-blur-[2px]"
+      />
+      
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#2D5016] mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#2D5016]/90 backdrop-blur shadow-lg mb-4 border border-white/10">
             <span className="text-2xl font-bold text-white">P</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Pelletor</h1>
-          <p className="text-gray-600 mt-1">Kundenkonto</p>
+          <h1 className="text-2xl font-bold text-white drop-shadow-md">Pelletor</h1>
+          <p className="text-white/80 mt-1 font-medium">Kundenkonto</p>
         </div>
 
-        <Card className="border border-gray-200 shadow-lg">
+        <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <CardTitle className="text-center text-gray-900">Anmelden</CardTitle>
           </CardHeader>

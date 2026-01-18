@@ -9,7 +9,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { OrderCard } from '@/components/orders/order-card';
 import { Order } from '@/types';
-import { AuthUser } from '@/lib/auth';
+import { ProgressiveBackground } from '@/components/ui/progressive-background';
+
+const BG_FULL = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse.png";
+const BG_BLUR = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse-blur.png";
 
 export default function CustomerOrdersPage() {
   const router = useRouter();
@@ -57,10 +60,15 @@ export default function CustomerOrdersPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FAFAF8] via-white to-[#f0f0e8]">
+    <div className="min-h-screen relative">
+      <ProgressiveBackground 
+        src={BG_FULL} 
+        blurSrc={BG_BLUR} 
+        overlayClassName="bg-[#FAFAF8]/90" 
+      />
       <Header variant="customer" userName={user.name} />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>

@@ -13,9 +13,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AuthUser } from '@/lib/auth';
-import { Order } from '@/types';
+import { ProgressiveBackground } from '@/components/ui/progressive-background';
 
 const ORDERS_FOR_RECHNUNG = 3;
+const BG_FULL = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse.png";
+const BG_BLUR = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse-blur.png";
 
 export default function AccountDashboard() {
   const router = useRouter();
@@ -101,10 +103,15 @@ export default function AccountDashboard() {
   const recentOrders = orders.slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FAFAF8] via-white to-[#f0f0e8]">
+    <div className="min-h-screen relative">
+      <ProgressiveBackground 
+        src={BG_FULL} 
+        blurSrc={BG_BLUR} 
+        overlayClassName="bg-[#FAFAF8]/90" 
+      />
       <Header variant="customer" userName={user.name} />
 
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
+      <main className="container mx-auto px-4 py-8 max-w-6xl relative z-10">
         {/* Hero Welcome Section */}
         <div className="relative mb-8 p-8 rounded-3xl bg-gradient-to-br from-[#2D5016] via-[#3a6619] to-[#2D5016] text-white shadow-2xl overflow-hidden">
           {/* Animated particles */}

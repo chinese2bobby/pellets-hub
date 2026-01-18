@@ -10,10 +10,14 @@ import { Header } from '@/components/layout/header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AuthUser } from '@/lib/auth';
+import { ProgressiveBackground } from '@/components/ui/progressive-background';
 
-interface Address {
-  id: string;
+const BG_FULL = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse.png";
+const BG_BLUR = "https://srtsuzvjjcrliuaftvce.supabase.co/storage/v1/object/public/assets/bg-warehouse-blur.png";
+
+export default function SettingsPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
   label: string;
   name: string;
   street: string;
